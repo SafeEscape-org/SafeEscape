@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "841617839404",
+    "project_id": "disaster-management-de632",
+    "storage_bucket": "disaster-management-de632.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841617839404:android:eb8cf767ac259f7d3c4889",
+        "android_client_info": {
+          "package_name": "com.example.disaster_management"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbTbSGzz7z2WmLqWP7zLePR0TO_wW_PAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
