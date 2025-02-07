@@ -1,3 +1,5 @@
+import 'package:disaster_management/config/fcm_config.dart';
+import 'package:disaster_management/config/firebase_config.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -5,9 +7,9 @@ import 'firebase_options.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized(); // Required before async initialization
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Uses options from firebase_options.dart
-  );
+  // Initialize Firebase and FCM
+  await FirebaseConfig.initializeFirebase();
+  await FCMConfig.initializeFCM();
   runApp(const MyApp());
 }
 
