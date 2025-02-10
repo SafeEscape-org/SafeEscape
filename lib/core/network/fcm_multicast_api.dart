@@ -4,7 +4,12 @@ import 'dart:convert';
 class FCMService {
   final String serverKey = 'YOUR_FCM_SERVER_KEY_HERE';
 
-  Future<void> sendNotification(String fcmToken, String message) async {
+  Future<void> sendMulticastNotification(List<String> fcmTokens, String message) async {
+    if (fcmTokens.isEmpty) {
+      print("No FCM tokens provided.");
+      return;
+    }
+
     final url = Uri.parse('https://fcm.googleapis.com/fcm/send');
 
     final headers = {
@@ -13,7 +18,7 @@ class FCMService {
     };
 
     final body = jsonEncode({
-      'to': fcmToken,
+      'registration_ids': fcmTokens,  // <-- MULTICAST: Multiple FCM tokens
       'notification': {
         'title': 'Disaster Alert',
         'body': message,
@@ -26,9 +31,9 @@ class FCMService {
     final response = await http.post(url, headers: headers, body: body);
 
     if (response.statusCode == 200) {
-      print('Notification sent successfully');
+      print('Multicast Notification sent successfully');
     } else {
-      print('Error sending notification: ${response.body}');
+      print('Error sending multicast notification: ${response.body}');
     }
   }
 }
