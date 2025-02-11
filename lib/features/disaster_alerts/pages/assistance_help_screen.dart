@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 
 class EmergencyScreen extends StatelessWidget {

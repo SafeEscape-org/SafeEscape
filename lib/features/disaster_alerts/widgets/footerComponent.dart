@@ -12,8 +12,7 @@ class FooterComponent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    Theme.of(context);
 
     return SafeArea(
       top: false,
@@ -55,7 +54,6 @@ class FooterComponent extends StatelessWidget {
   ) {
     final isSelected = index == currentIndex;
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
     return NavigationDestination(
       icon: AnimatedContainer(
