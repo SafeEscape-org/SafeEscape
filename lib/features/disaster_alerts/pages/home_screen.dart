@@ -1,20 +1,90 @@
+import 'package:disaster_management/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 
-class CombinedHomeWeatherComponent extends StatelessWidget {
+class CombinedHomeWeatherComponent extends StatefulWidget {
+  // ... keep existing constructor and properties ...
+
+  @override
+  _CombinedHomeWeatherComponentState createState() =>
+      _CombinedHomeWeatherComponentState();
+}
+
+class _CombinedHomeWeatherComponentState
+    extends State<CombinedHomeWeatherComponent> with WidgetsBindingObserver {
   final String temperature;
   final String condition;
   final String sensibleTemperature;
   final String humidity;
   final String pressure;
 
-  CombinedHomeWeatherComponent({
+  Map<String, dynamic>? _locationData;
+  String _errorMessage = '';
+  bool _isLoading = true;
+
+  _CombinedHomeWeatherComponentState({
     this.temperature = '23',
     this.condition = 'Moderate disaster risk',
     this.sensibleTemperature = '25°',
     this.humidity = '63%',
     this.pressure = '1009 hPa',
   });
+
+  @override
+  void initState() {
+    super.initState();
+     WidgetsBinding.instance.addObserver(this);
+    _fetchLocationData();
+  }
+
+    @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchLocationData();
+    }
+  }
+
+  //initial location fetch on home screen
+  Future<void> _fetchLocationData() async {
+    print("Fetching location data...");
+    try {
+      final data = await LocationService.getCurrentLocation(context);
+      setState(() {
+        _locationData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error fetching location: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatCoordinates() {
+    if (_locationData == null) return 'Fetching coordinates...';
+    final lat = _locationData!['latitude'].toStringAsFixed(4);
+    final lng = _locationData!['longitude'].toStringAsFixed(4);
+    return '$lat° N, $lng° E';
+  }
+
+  String _formatTimeAgo() {
+    if (_locationData == null) return 'Just now';
+    final lastFetched = DateTime.parse(_locationData!['lastFetched']);
+    final difference = DateTime.now().difference(lastFetched);
+
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    return '${difference.inDays}d ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -106,20 +176,24 @@ class CombinedHomeWeatherComponent extends StatelessWidget {
                             color: Color(0xFF00E676), size: 20),
                         SizedBox(width: 8),
                         Flexible(
-                          child: Text(
-                            'Coastal City, CA',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? Text('Fetching location...',
+                                  style: TextStyle(color: Colors.white))
+                              : Text(
+                                  _locationData?['address'] ??
+                                      'Unknown Location',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '34.0522° N, 118.2437° W',
+                      _isLoading ? '...' : _formatCoordinates(),
                       style: TextStyle(
                         color: Color(0xFF9E9E9E),
                         fontSize: 12,
@@ -127,7 +201,7 @@ class CombinedHomeWeatherComponent extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Last updated: 15m ago',
+                      _isLoading ? 'Updating...' : 'Last updated: ${_formatTimeAgo()}',
                       style: TextStyle(
                         color: Color(0xFF6B6B6B),
                         fontSize: 10,
@@ -275,51 +349,52 @@ class CombinedHomeWeatherComponent extends StatelessWidget {
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-      color: Color(0xFF1E1E1E),
-      borderRadius: BorderRadius.circular(16),
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Predictive Analysis',
-          style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Predictive Analysis',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
-        ),
-        LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 48) / 2;
-          return GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: itemWidth / 140, // Adjusted height to prevent overflow
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - 48) / 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio:
+                      itemWidth / 140, // Adjusted height to prevent overflow
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                ),
+                itemCount: predictions.length,
+                itemBuilder: (context, index) {
+                  final prediction = predictions[index];
+                  return _buildAlertCard(
+                    prediction.title,
+                    prediction.riskPercent,
+                    prediction.icon,
+                    Color(prediction.color),
+                  );
+                },
+              );
+            },
           ),
-          itemCount: predictions.length,
-          itemBuilder: (context, index) {
-            final prediction = predictions[index];
-            return _buildAlertCard(
-            prediction.title,
-            prediction.riskPercent,
-            prediction.icon,
-            Color(prediction.color),
-            );
-          },
-          );
-        },
-        ),
-        SizedBox(height: 16),
-      ],
+          SizedBox(height: 16),
+        ],
       ),
     );
   }
@@ -470,81 +545,79 @@ class CombinedHomeWeatherComponent extends StatelessWidget {
     );
   }
 
-Widget _buildAlertCard(
-    String title, int riskPercent, IconData icon, Color color) {
-  return Container(
-    constraints: const BoxConstraints(minWidth: 160),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withOpacity(0.3)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: IntrinsicHeight( // Prevents bottom overflow
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, 
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 8), // Prevents tight spacing
-                Expanded(
-                  child: Text(
-                    '$riskPercent%',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+  Widget _buildAlertCard(
+      String title, int riskPercent, IconData icon, Color color) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 160),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: IntrinsicHeight(
+          // Prevents bottom overflow
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
+                    child: Icon(icon, color: color, size: 24),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                  const SizedBox(width: 8), // Prevents tight spacing
+                  Expanded(
+                    child: Text(
+                      '$riskPercent%',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox(
-                  width: constraints.maxWidth,
-                  child: LinearProgressIndicator(
-                    value: riskPercent / 100,
-                    backgroundColor: color.withOpacity(0.2),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                );
-              },
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SizedBox(
+                    width: constraints.maxWidth,
+                    child: LinearProgressIndicator(
+                      value: riskPercent / 100,
+                      backgroundColor: color.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
-
-
-
+    );
+  }
 }
 
 // Helper classes for data organization

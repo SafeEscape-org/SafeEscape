@@ -1,9 +1,48 @@
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:disaster_management/services/location_service.dart'; // Import the service file
 
-class EvacuationScreen extends StatelessWidget {
+class EvacuationScreen extends StatefulWidget {
   const EvacuationScreen({super.key});
 
+  @override
+  _EvacuationScreenState createState() => _EvacuationScreenState();
+}
+
+class _EvacuationScreenState extends State<EvacuationScreen> {
+  late GoogleMapController mapController;
+  LatLng? _currentPosition;
+  bool _locationPermissionDenied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentLocation();
+  }
+
+  /// Request location permission
+  Future<void> _fetchCurrentLocation() async {
+  var locationData = await LocationService.getCurrentLocation(context);
+  print("locationData: $locationData");
+
+  if (locationData != null) {
+    setState(() {
+      _currentPosition = LatLng(
+        locationData["latitude"] as double,
+        locationData["longitude"] as double,
+      );
+    });
+
+    if (mapController != null && _currentPosition != null) {
+      mapController.animateCamera(
+        CameraUpdate.newLatLng(_currentPosition!),
+      );
+    }
+  } else {
+    setState(() => _locationPermissionDenied = true);
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,30 +73,23 @@ class EvacuationScreen extends StatelessWidget {
                       )
                     ],
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map_outlined,
-                          color: Colors.white.withOpacity(0.2),
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'MAP VIEW',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _locationPermissionDenied
+                      ? _buildPermissionDeniedMessage()
+                      : _currentPosition == null
+                          ? _buildLoadingIndicator()
+                          : GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: _currentPosition!,
+                                zoom: 14.0,
+                              ),
+                              myLocationEnabled: true,
+                              myLocationButtonEnabled: true,
+                              onMapCreated: (controller) {
+                                mapController = controller;
+                              },
+                            ),
                 ),
-                
+
                 // Routes List
                 Expanded(
                   child: ListView.builder(
@@ -69,7 +101,35 @@ class EvacuationScreen extends StatelessWidget {
               ],
             ),
           ),
-          // const FooterComponent(), // Your existing footer
+        ],
+      ),
+    );
+  }
+
+  /// Display loading indicator while fetching location
+  Widget _buildLoadingIndicator() {
+    return const Center(
+      child: CircularProgressIndicator(color: Colors.white),
+    );
+  }
+
+  /// Display message if location permission is denied
+  Widget _buildPermissionDeniedMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.location_off, color: Colors.red, size: 48),
+          const SizedBox(height: 8),
+          const Text(
+            'Location access is denied.',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: () => LocationService.getCurrentLocation(context),
+            child: const Text('Retry'),
+          ),
         ],
       ),
     );
@@ -98,7 +158,7 @@ class EvacuationScreen extends StatelessWidget {
     ];
 
     final route = routes[index];
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -159,26 +219,12 @@ class EvacuationScreen extends StatelessWidget {
             ),
           ],
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _getTrafficColor(route['traffic']!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            route['traffic']!,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildStatusChip({required IconData icon, required String text, required Color color}) {
+  Widget _buildStatusChip(
+      {required IconData icon, required String text, required Color color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -194,16 +240,5 @@ class EvacuationScreen extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Color _getTrafficColor(String level) {
-    switch (level.toLowerCase()) {
-      case 'high':
-        return Colors.red.withOpacity(0.4);
-      case 'medium':
-        return Colors.orange.withOpacity(0.4);
-      default:
-        return Colors.green.withOpacity(0.4);
-    }
   }
 }
