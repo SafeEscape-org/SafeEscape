@@ -14,3 +14,11 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Environment Setup
+
+### API Keys
+1. Run the setup script:
+   ```bash
+   cd scripts
+   dart setup_secrets.dart

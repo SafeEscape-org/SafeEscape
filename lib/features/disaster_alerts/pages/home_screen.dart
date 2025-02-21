@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 
 class CombinedHomeWeatherComponent extends StatefulWidget {
+  const CombinedHomeWeatherComponent({super.key});
+
   // ... keep existing constructor and properties ...
 
   @override
+  // ignore: library_private_types_in_public_api
   _CombinedHomeWeatherComponentState createState() =>
       _CombinedHomeWeatherComponentState();
 }
@@ -19,7 +22,6 @@ class _CombinedHomeWeatherComponentState
   final String pressure;
 
   Map<String, dynamic>? _locationData;
-  String _errorMessage = '';
   bool _isLoading = true;
 
   _CombinedHomeWeatherComponentState({
@@ -61,7 +63,6 @@ class _CombinedHomeWeatherComponentState
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error fetching location: ${e.toString()}';
         _isLoading = false;
       });
     }

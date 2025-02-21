@@ -2,7 +2,7 @@ import 'package:disaster_management/config/fcm_config.dart';
 import 'package:disaster_management/config/firebase_config.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/assistance_help_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
-import 'package:disaster_management/features/disaster_alerts/pages/maps_screen_feat.dart';
+import 'package:disaster_management/features/disaster_alerts/pages/evacuation_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
 // import 'package:disaster_management/screens/main_screen.dart';
 import 'package:flutter/material.dart';
