@@ -19,7 +19,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   bool _locationPermissionDenied = false;
   List<EvacuationPlace> _places = [];
   bool _isLoading = false;
-
+  Set<Polyline> _polylines = {}; // Add this line
   @override
   void initState() {
     super.initState();
@@ -60,10 +60,70 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     }
   }
 
+  Future<void> _showRouteToPlace(EvacuationPlace place) async {
+    try {
+      final polylinePoints = await PlacesService.getDirections(
+        origin: _currentPosition!,
+        destination: LatLng(place.lat, place.lng),
+      );
+
+      print("polylines ${polylinePoints}");
+
+      if (polylinePoints.isNotEmpty) {
+        final String polylineId = 'route_${place.placeId}';
+
+        // Create new route
+        final Polyline routePolyline = Polyline(
+          polylineId: PolylineId(polylineId),
+          points: polylinePoints,
+          color: Colors.blue,
+          width: 5,
+        );
+
+        // Update map camera to show entire route
+        LatLngBounds bounds = _getBoundsForRoute(polylinePoints);
+        mapController.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50),
+        );
+
+        setState(() {
+          _polylines.clear(); // Clear previous routes
+          _polylines.add(routePolyline); // Add new route
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to fetch route. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  LatLngBounds _getBoundsForRoute(List<LatLng> points) {
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (var point in points) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
@@ -107,6 +167,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                                         child: EvacuationMap(
                                           currentPosition: _currentPosition!,
                                           places: _places,
+                                          polylines: _polylines, // Add this line
                                           onMapCreated: (controller) {
                                             mapController = controller;
                                           },
@@ -116,11 +177,13 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                         ),
                         SliverToBoxAdapter(
                           child: Container(
-                            height: screenHeight * 0.5, // Fixed height for list section
+                            height: screenHeight *
+                                0.5, // Fixed height for list section
                             child: _places.isEmpty
                                 ? Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.location_searching,
@@ -131,7 +194,8 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                                         Text(
                                           'No nearby places found',
                                           style: TextStyle(
-                                            color: Colors.white.withOpacity(0.6),
+                                            color:
+                                                Colors.white.withOpacity(0.6),
                                             fontSize: 16,
                                           ),
                                         ),
@@ -139,10 +203,12 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
                                     physics: const BouncingScrollPhysics(),
                                     itemCount: _places.length,
-                                    itemBuilder: (context, index) => _buildRouteCard(_places[index]),
+                                    itemBuilder: (context, index) =>
+                                        _buildRouteCard(_places[index]),
                                   ),
                           ),
                         ),
@@ -163,72 +229,74 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
 
   // Update _buildRouteCard to use EvacuationPlace
   Widget _buildRouteCard(EvacuationPlace place) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF404040),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
+    return GestureDetector(
+        onTap: () => _showRouteToPlace(place),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF00FF00).withOpacity(0.1),
-            shape: BoxShape.circle,
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF404040),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
-          child: const Icon(
-            Icons.directions,
-            color: Color(0xFF00FF00),
-            size: 24,
-          ),
-        ),
-        title: Text(
-          place.name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00FF00).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.directions,
+                color: Color(0xFF00FF00),
+                size: 24,
+              ),
+            ),
+            title: Text(
+              place.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (place.rating != null)
-                  _buildStatusChip(
-                    icon: Icons.star,
-                    text: place.rating!.toString(),
-                    color: Colors.amber,
-                  ),
-                _buildStatusChip(
-                  icon: Icons.location_on,
-                  text: place.vicinity,
-                  color: Colors.green,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    if (place.rating != null)
+                      _buildStatusChip(
+                        icon: Icons.star,
+                        text: place.rating!.toString(),
+                        color: Colors.amber,
+                      ),
+                    _buildStatusChip(
+                      icon: Icons.location_on,
+                      text: place.vicinity,
+                      color: Colors.green,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   Widget _buildStatusChip(
@@ -256,6 +324,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
       ),
     );
   }
+
   /// Display loading indicator while fetching location
   Widget _buildLoadingIndicator() {
     return const Center(

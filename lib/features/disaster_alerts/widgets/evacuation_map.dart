@@ -2,24 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/evacuation_place.dart';
 
-class EvacuationMap extends StatelessWidget {
+class EvacuationMap extends StatefulWidget {
   final LatLng currentPosition;
   final List<EvacuationPlace> places;
   final Function(GoogleMapController) onMapCreated;
-  late GoogleMapController _mapController;
-  EvacuationMap({
+  final Set<Polyline> polylines;
+  
+  const EvacuationMap({
     Key? key,
     required this.currentPosition,
     required this.places,
     required this.onMapCreated,
+    required this.polylines,
   }) : super(key: key);
+  
+  @override
+  State<EvacuationMap> createState() => _EvacuationMapState();
+}
+
+class _EvacuationMapState extends State<EvacuationMap> {
+  late GoogleMapController _mapController;
+  
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         GoogleMap(
           initialCameraPosition: CameraPosition(
-            target: currentPosition,
+            target: widget.currentPosition,
             zoom: 14.0,
           ),
           myLocationEnabled: true,
@@ -28,11 +38,13 @@ class EvacuationMap extends StatelessWidget {
           mapType: MapType.normal,
           onMapCreated: (GoogleMapController controller) {
             _mapController = controller;
-            onMapCreated(controller);
+            widget.onMapCreated(controller);
             _setMapStyle(controller);
           },
           markers: _createMarkers(),
+          polylines: widget.polylines,
         ),
+        // Rest of your Stack children remain the same, just add 'widget.' before accessing props
         // Custom Controls
         Positioned(
           right: 16,
@@ -75,7 +87,7 @@ class EvacuationMap extends StatelessWidget {
               _mapController.animateCamera(
                 CameraUpdate.newCameraPosition(
                   CameraPosition(
-                    target: currentPosition,
+                    target: widget.currentPosition,
                     zoom: 15.0,
                   ),
                 ),
@@ -86,7 +98,6 @@ class EvacuationMap extends StatelessWidget {
       ],
     );
   }
-
   Future<void> _setMapStyle(GoogleMapController controller) async {
     controller.setMapStyle('''
       [
@@ -167,9 +178,9 @@ class EvacuationMap extends StatelessWidget {
 
   Set<Marker> _createMarkers() {
     final Set<Marker> markers = {};
-    
+
     // Add place markers
-    for (var place in places) {
+    for (var place in widget.places) {
       markers.add(
         Marker(
           markerId: MarkerId(place.placeId),
@@ -187,7 +198,7 @@ class EvacuationMap extends StatelessWidget {
     markers.add(
       Marker(
         markerId: const MarkerId('current_location'),
-        position: currentPosition,
+        position: widget.currentPosition,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         infoWindow: const InfoWindow(title: 'Your Location'),
       ),
