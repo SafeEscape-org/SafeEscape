@@ -4,6 +4,9 @@ import 'package:disaster_management/features/disaster_alerts/pages/assistance_he
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/evacuation_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
+import 'package:disaster_management/features/authentication/pages/login_page.dart';
+import 'package:disaster_management/features/authentication/pages/registration_page.dart';
+
 // import 'package:disaster_management/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -23,7 +26,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(), // Use a modern dark theme
-      home: const MainScreen(), // 👈 Set MainScreen as the entry point
+      home:  RegistrationPage(), // 👈 Set MainScreen as the entry point
     );
   }
 }
