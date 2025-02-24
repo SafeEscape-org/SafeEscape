@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/widgets/custom_text_field.dart';
 import 'package:disaster_management/features/authentication/widgets/custom_button.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
+import 'package:disaster_management/features/authentication/pages/login_page.dart';
 import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -47,7 +48,7 @@ class RegistrationPageState extends State<RegistrationPage> with SingleTickerPro
     return Scaffold(
       body: SingleChildScrollView(
         child: Container(
-          height: MediaQuery.of(context).size.height,
+          height: MediaQuery.of(context).size.height,  // Remove this to allow scrolling based on content size
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -60,60 +61,77 @@ class RegistrationPageState extends State<RegistrationPage> with SingleTickerPro
               padding: EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: 20),
-                    Lottie.network(
-                      'https://assets5.lottiefiles.com/packages/lf20_jcikwtux.json',
-                      height: 200,
-                      controller: _animationController,
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Join Smart Alert, Stay safe!',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 20),
-                    _buildAnimatedTextField(
-                      label: 'Name',
-                      controller: _nameController,
-                      validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-                      delay: 0,
-                    ),
-                    SizedBox(height: 16),
-                    _buildAnimatedTextField(
-                      label: 'Address',
-                      controller: _addressController,
-                      validator: (value) => value!.isEmpty ? 'Please enter your address' : null,
-                      delay: 200,
-                    ),
-                    SizedBox(height: 16),
-                    _buildAnimatedTextField(
-                      label: 'Mobile Number',
-                      controller: _mobileController,
-                      validator: (value) => value!.isEmpty || value.length != 10
-                          ? 'Please enter a valid 10-digit mobile number'
-                          : null,
-                      keyboardType: TextInputType.phone,
-                      delay: 400,
-                    ),
-                    SizedBox(height: 16),
-                    _buildAnimatedTextField(
-                      label: 'Age',
-                      controller: _ageController,
-                      validator: (value) => int.tryParse(value!) == null || int.parse(value) <= 0
-                          ? 'Please enter a valid age'
-                          : null,
-                      keyboardType: TextInputType.number,
-                      delay: 600,
-                    ),
-                    SizedBox(height: 16),
-                    _buildAnimatedDropdown(delay: 800),
-                    SizedBox(height: 24),
-                    _buildAnimatedButton(delay: 1000),
-                  ],
+                child: SingleChildScrollView(  // Added SingleChildScrollView here
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(height: 20),
+                      Lottie.network(
+                        'https://assets5.lottiefiles.com/packages/lf20_jcikwtux.json',
+                        height: 200,
+                        controller: _animationController,
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        'Join Smart Alert, Stay safe!',
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 20),
+                      _buildAnimatedTextField(
+                        label: 'Name',
+                        controller: _nameController,
+                        validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
+                        delay: 0,
+                      ),
+                      SizedBox(height: 16),
+                      _buildAnimatedTextField(
+                        label: 'Address',
+                        controller: _addressController,
+                        validator: (value) => value!.isEmpty ? 'Please enter your address' : null,
+                        delay: 200,
+                      ),
+                      SizedBox(height: 16),
+                      _buildAnimatedTextField(
+                        label: 'Mobile Number',
+                        controller: _mobileController,
+                        validator: (value) => value!.isEmpty || value.length != 10
+                            ? 'Please enter a valid 10-digit mobile number'
+                            : null,
+                        keyboardType: TextInputType.phone,
+                        delay: 400,
+                      ),
+                      SizedBox(height: 16),
+                      _buildAnimatedTextField(
+                        label: 'Age',
+                        controller: _ageController,
+                        validator: (value) => int.tryParse(value!) == null || int.parse(value) <= 0
+                            ? 'Please enter a valid age'
+                            : null,
+                        keyboardType: TextInputType.number,
+                        delay: 600,
+                      ),
+                      SizedBox(height: 16),
+                      _buildAnimatedDropdown(delay: 800),
+                      SizedBox(height: 24),
+                      _buildAnimatedButton(delay: 1000),
+                      SizedBox(height: 20),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => LoginPage()),
+                            );
+                          },
+                          child: Text(
+                            'Already registered? (Login)',
+                            style: TextStyle(color: Colors.white, fontSize: 16, decoration: TextDecoration.underline),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

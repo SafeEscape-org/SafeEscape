@@ -4,7 +4,7 @@ import 'package:disaster_management/features/authentication/widgets/custom_butto
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:disaster_management/features/authentication/pages/registration_page.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -103,6 +103,21 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                       ),
                     SizedBox(height: 24),
                     _buildAnimatedButton(delay: 600),
+                    SizedBox(height: 20),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => RegistrationPage()),
+                          );
+                        },
+                        child: Text(
+                          'New user? (Registration)',
+                          style: TextStyle(color: Colors.white, fontSize: 16, decoration: TextDecoration.underline),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
