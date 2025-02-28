@@ -47,6 +47,7 @@ dependencies:
   google_maps_flutter_web: ^0.5.10
   flutter_polyline_points: ^2.1.0
   lottie: ^3.3.1
+  flutter_timer_countdown: ^1.0.7
 
 dev_dependencies:
   flutter_test:

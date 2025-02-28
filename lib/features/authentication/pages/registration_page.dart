@@ -1,268 +1,155 @@
+import 'package:disaster_management/main.dart';
 import 'package:flutter/material.dart';
-import 'package:disaster_management/features/authentication/widgets/custom_text_field.dart';
-import 'package:disaster_management/features/authentication/widgets/custom_button.dart';
-import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
-import 'package:disaster_management/features/authentication/pages/login_page.dart';
-import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:disaster_management/features/authentication/services/auth_service.dart';
 
 class RegistrationPage extends StatefulWidget {
-  const RegistrationPage({Key? key}) : super(key: key);
+  const RegistrationPage({super.key});
 
   @override
-  RegistrationPageState createState() => RegistrationPageState();
+  State<RegistrationPage> createState() => _RegistrationPageState();
 }
 
-class RegistrationPageState extends State<RegistrationPage> with SingleTickerProviderStateMixin {
+class _RegistrationPageState extends State<RegistrationPage> {
+  final AuthService _authService = AuthService(); // Add this line at the top
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _mobileController = TextEditingController();
-  final _ageController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
   String _gender = 'Male';
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1500),
-    );
-    _animationController.forward();
-  }
 
   @override
   void dispose() {
-    _animationController.dispose();
     _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _phoneController.dispose();
     _addressController.dispose();
-    _mobileController.dispose();
-    _ageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Account'),
+      ),
       body: SingleChildScrollView(
-        child: Container(
-          height: MediaQuery.of(context).size.height,  // Remove this to allow scrolling based on content size
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.teal.shade300, Colors.teal.shade700],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(  // Added SingleChildScrollView here
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(height: 20),
-                      Lottie.network(
-                        'https://assets5.lottiefiles.com/packages/lf20_jcikwtux.json',
-                        height: 200,
-                        controller: _animationController,
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Join Smart Alert, Stay safe!',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 20),
-                      _buildAnimatedTextField(
-                        label: 'Name',
-                        controller: _nameController,
-                        validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-                        delay: 0,
-                      ),
-                      SizedBox(height: 16),
-                      _buildAnimatedTextField(
-                        label: 'Address',
-                        controller: _addressController,
-                        validator: (value) => value!.isEmpty ? 'Please enter your address' : null,
-                        delay: 200,
-                      ),
-                      SizedBox(height: 16),
-                      _buildAnimatedTextField(
-                        label: 'Mobile Number',
-                        controller: _mobileController,
-                        validator: (value) => value!.isEmpty || value.length != 10
-                            ? 'Please enter a valid 10-digit mobile number'
-                            : null,
-                        keyboardType: TextInputType.phone,
-                        delay: 400,
-                      ),
-                      SizedBox(height: 16),
-                      _buildAnimatedTextField(
-                        label: 'Age',
-                        controller: _ageController,
-                        validator: (value) => int.tryParse(value!) == null || int.parse(value) <= 0
-                            ? 'Please enter a valid age'
-                            : null,
-                        keyboardType: TextInputType.number,
-                        delay: 600,
-                      ),
-                      SizedBox(height: 16),
-                      _buildAnimatedDropdown(delay: 800),
-                      SizedBox(height: 24),
-                      _buildAnimatedButton(delay: 1000),
-                      SizedBox(height: 20),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => LoginPage()),
-                            );
-                          },
-                          child: Text(
-                            'Already registered? (Login)',
-                            style: TextStyle(color: Colors.white, fontSize: 16, decoration: TextDecoration.underline),
-                          ),
-                        ),
-                      ),
-                    ],
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Full Name'),
+                validator: (value) =>
+                    value!.isEmpty ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) =>
+                    !value!.contains('@') ? 'Enter a valid email' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
+                obscureText: _obscurePassword,
+                validator: (value) => value!.length < 6
+                    ? 'Password must be at least 6 characters'
+                    : null,
               ),
-            ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+                keyboardType: TextInputType.phone,
+                validator: (value) =>
+                    value!.length != 10 ? 'Enter valid 10-digit number' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(labelText: 'Address'),
+                maxLines: 2,
+                validator: (value) =>
+                    value!.isEmpty ? 'Address is required' : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _gender,
+                decoration: const InputDecoration(labelText: 'Gender'),
+                items: ['Male', 'Female', 'Other']
+                    .map((label) => DropdownMenuItem(
+                          value: label,
+                          child: Text(label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() => _gender = value!);
+                },
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _handleRegistration,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Create Account'),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAnimatedTextField({
-    required String label,
-    required TextEditingController controller,
-    required String? Function(String?) validator,
-    TextInputType? keyboardType,
-    required int delay,
-  }) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-          parent: _animationController,
-          curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-        ),
-      ),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-          ),
-        ),
-        child: CustomTextField(
-          label: label,
-          controller: controller,
-          validator: validator,
-          keyboardType: keyboardType,
-        ),
-      ),
-    );
-  }
+  Future<void> _handleRegistration() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  Widget _buildAnimatedDropdown({required int delay}) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-          parent: _animationController,
-          curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-        ),
-      ),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-          ),
-        ),
-        child: DropdownButtonFormField<String>(
-          value: _gender,
-          decoration: InputDecoration(
-            labelText: 'Gender',
-            border: OutlineInputBorder(),
-            filled: true,
-            fillColor: Colors.black.withOpacity(0.8),
-          ),
-          items: ['Male', 'Female']
-              .map((label) => DropdownMenuItem(
-            child: Text(label),
-            value: label,
-          ))
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _gender = value!;
-            });
-          },
-        ),
-      ),
-    );
-  }
+    setState(() => _isLoading = true);
+    print("Starting registration process"); // Debug log
 
-  Widget _buildAnimatedButton({required int delay}) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-          parent: _animationController,
-          curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-        ),
-      ),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Interval(delay / 1500, (delay + 500) / 1500, curve: Curves.easeOut),
-          ),
-        ),
-        child: CustomButton(
-          text: 'Register',
-          onPressed: _submitForm,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        // Create user in Firebase Authentication
-        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: "${_mobileController.text}@smartemergency.com",
-          password: _mobileController.text, // Using mobile number as password (not recommended for production)
+    try {
+      print("calling registration");
+      await _authService.registerUser(
+        context: context,
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phone: _phoneController.text.trim(),
+        emergencyContacts: [], // Add emergency contacts if needed
+      );
+      print("Registration completed"); // Debug log
+    } catch (e) {
+      print("Registration error: $e"); // Debug log
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
         );
-
-        // Save user details to Firestore
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-          'name': _nameController.text,
-          'address': _addressController.text,
-          'mobile': _mobileController.text,
-          'age': int.parse(_ageController.text),
-          'gender': _gender,
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Registration successful!')));
-
-        // Navigate to Home screen after successful registration
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => CombinedHomeWeatherComponent()),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Registration failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
 }
-
