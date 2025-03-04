@@ -1,3 +1,4 @@
+import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
 import 'package:disaster_management/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
@@ -20,6 +21,7 @@ class _CombinedHomeWeatherComponentState
   final String sensibleTemperature;
   final String humidity;
   final String pressure;
+   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   Map<String, dynamic>? _locationData;
   bool _isLoading = true;
@@ -93,11 +95,18 @@ class _CombinedHomeWeatherComponentState
     WidgetsApp.debugAllowBannerOverride = false; // Removes the debug banner
 
     return Scaffold(
+      key: _scaffoldKey, // Add scaffold key
       backgroundColor: Color(0xFF121212),
+      endDrawer: SideNavigation(userName: 'AliHyder'), // Add the side navigation
       body: SafeArea(
         child: Column(
           children: [
-            HeaderComponent(),
+            HeaderComponent(
+              userName: 'AliHyder',
+              onSettingsTap: () {
+                _scaffoldKey.currentState?.openEndDrawer();
+              },
+            ),
             Expanded(
               child: SingleChildScrollView(
                 physics: AlwaysScrollableScrollPhysics(),

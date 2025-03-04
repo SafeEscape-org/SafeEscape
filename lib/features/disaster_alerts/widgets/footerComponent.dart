@@ -18,41 +18,34 @@ class FooterComponent extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.only(top: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF1A1A1A).withOpacity(0.95),
-              const Color(0xFF1A1A1A),
-            ],
-          ),
+          color: Colors.white,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, -4),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              spreadRadius: -2,
+              offset: const Offset(0, -6),
             )
           ],
         ),
         child: NavigationBar(
           elevation: 0,
-          height: 72,
+          height: 76,
           backgroundColor: Colors.transparent,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
           selectedIndex: currentIndex,
           animationDuration: const Duration(milliseconds: 400),
           onDestinationSelected: (index) {
-            HapticFeedback.lightImpact();
+            HapticFeedback.mediumImpact();
             onTabSelected?.call(index);
           },
           destinations: [
-            _buildDestination(context, 0, Icons.home_max_rounded, 'Home'),
-            _buildDestination(context, 1, Icons.warning_amber_rounded, 'Alerts'),
+            _buildDestination(context, 0, Icons.home_rounded, 'Home'),
+            _buildDestination(context, 1, Icons.notifications_rounded, 'Alerts'),
             _buildDestination(context, 2, Icons.health_and_safety_rounded, 'Safety'),
           ],
         ),
@@ -72,27 +65,37 @@ class FooterComponent extends StatelessWidget {
     return NavigationDestination(
       icon: TweenAnimationBuilder<double>(
         tween: Tween(begin: 1.0, end: isSelected ? 0.0 : 1.0),
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
         builder: (context, value, child) {
-          return Transform.scale(
-            scale: value,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1.5,
+          return Transform.translate(
+            offset: Offset(0, isSelected ? -8 * (1 - value) : 0),
+            child: Transform.scale(
+              scale: value,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutQuart,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF5F5F5),
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.2),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      spreadRadius: -2,
+                    ),
+                  ],
                 ),
-              ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: Colors.white70,
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: Colors.grey[600],
+                ),
               ),
             ),
           );
@@ -100,62 +103,65 @@ class FooterComponent extends StatelessWidget {
       ),
       selectedIcon: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 600),
         curve: Curves.elasticOut,
         builder: (context, value, child) {
-          return Transform.scale(
-            scale: value,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF4CAF50),
-                        const Color(0xFF2E7D32),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF4CAF50).withOpacity(0.3),
-                        blurRadius: 12,
-                        spreadRadius: 2,
+          return Transform.translate(
+            offset: Offset(0, -8 * value),
+            child: Transform.scale(
+              scale: value,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutQuart,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF2196F3),
+                          const Color(0xFF1976D2),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [Colors.white, Colors.white.withOpacity(0.8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Icon(
-                      icon,
-                      size: 24,
-                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2196F3).withOpacity(0.25),
+                          blurRadius: 12,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Transform.scale(
+                      scale: 0.8 + (0.2 * value),
+                      child: Icon(
+                        icon,
+                        size: 24,
+                        color: Colors.white.withOpacity(value),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: value,
-                  child: Text(
-                    label.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFF4CAF50),
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      fontSize: 10,
+                  const SizedBox(height: 6),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    opacity: value,
+                    child: Text(
+                      label.toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF1976D2),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

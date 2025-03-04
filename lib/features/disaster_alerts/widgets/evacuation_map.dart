@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/evacuation_place.dart';
+import 'dart:math' show cos, sqrt, asin;
 
 class EvacuationMap extends StatefulWidget {
   final LatLng currentPosition;
@@ -22,11 +23,57 @@ class EvacuationMap extends StatefulWidget {
 }
 
 class _EvacuationMapState extends State<EvacuationMap> with SingleTickerProviderStateMixin {
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: widget.currentPosition,
+            zoom: 15,
+          ),
+          onMapCreated: (GoogleMapController controller) {
+            _mapController = controller;
+            widget.onMapCreated(controller);
+            if (_isDarkMode) {
+              _setMapStyle(controller);
+            }
+          },
+          markers: _createMarkers(),
+          polylines: widget.polylines,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: true,
+          mapType: _currentMapType,
+          trafficEnabled: _trafficEnabled,
+        ),
+        if (widget.polylines.isNotEmpty)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildRouteInfoPanel(),
+          ),
+      ],
+    );
+  }
+  // Add these properties at the top of the class
+  String _routeDuration = '0';
+  String _routeDistance = '0.0';
+  double _averageSpeed = 0.0;
+  bool _isDarkMode = false;
   late AnimationController _controller;
   late GoogleMapController _mapController;
   MapType _currentMapType = MapType.normal;
   bool _trafficEnabled = false;
-  
+  // Add this method to the _EvacuationMapState class
+  void _clearRoute() {
+    setState(() {
+      widget.polylines.clear();
+      _routeDuration = '0';
+      _routeDistance = '0.0';
+      _averageSpeed = 0.0;
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -89,101 +136,40 @@ class _EvacuationMapState extends State<EvacuationMap> with SingleTickerProvider
 
     return markers;
   }
-
+  void _updateRouteDetails() {
+    if (widget.polylines.isEmpty) return;
+    
+    double totalDistance = 0;
+    final points = widget.polylines.first.points;
+    
+    for (int i = 0; i < points.length - 1; i++) {
+      totalDistance += _calculateDistance(points[i], points[i + 1]);
+    }
+    
+    final durationInMinutes = (totalDistance * 1.5).round();
+    
+    setState(() {
+      _routeDuration = durationInMinutes.toString();
+      _routeDistance = totalDistance.toStringAsFixed(1);
+      _averageSpeed = totalDistance / (durationInMinutes / 60);
+    });
+  }
+  double _calculateDistance(LatLng start, LatLng end) {
+    var p = 0.017453292519943295; // Math.PI / 180
+    var c = cos;
+    var a = 0.5 - c((end.latitude - start.latitude) * p)/2 + 
+            c(start.latitude * p) * c(end.latitude * p) * 
+            (1 - c((end.longitude - start.longitude) * p))/2;
+    return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
+  }
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: widget.currentPosition,
-            zoom: 14.0,
-            tilt: 0,
-          ),
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapType: _currentMapType,
-          trafficEnabled: _trafficEnabled,
-          onMapCreated: (GoogleMapController controller) {
-            _mapController = controller;
-            widget.onMapCreated(controller);
-            _setMapStyle(controller);
-          },
-          markers: _createMarkers(),
-          polylines: widget.polylines,
-        ),
-        Positioned(
-          right: 16,
-          top: 16,
-          child: Column(
-            children: [
-              _buildControlButton(
-                icon: Icons.layers,
-                onPressed: _toggleMapType,
-                tooltip: 'Change Map Type',
-              ),
-              const SizedBox(height: 8),
-              _buildControlButton(
-                icon: Icons.traffic,
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _trafficEnabled = !_trafficEnabled);
-                },
-                tooltip: 'Toggle Traffic',
-                isActive: _trafficEnabled,
-              ),
-              const SizedBox(height: 8),
-              _buildControlButton(
-                icon: Icons.my_location,
-                onPressed: _goToCurrentLocation,
-                tooltip: 'My Location',
-              ),
-            ],
-          ),
-        ),
-        if (widget.polylines.isNotEmpty)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: _buildRouteInfoPanel(),
-          ),
-      ],
-    );
+  void didUpdateWidget(EvacuationMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.polylines != oldWidget.polylines) {
+      _updateRouteDetails();
+    }
   }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required String tooltip,
-    bool isActive = false,
-  }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: isActive ? Theme.of(context).primaryColor : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon),
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          onPressed();
-        },
-        color: isActive ? Colors.white : Colors.black87,
-        tooltip: tooltip,
-      ),
-    );
-  }
-
+  // Update the route info panel build method
   Widget _buildRouteInfoPanel() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -228,60 +214,29 @@ class _EvacuationMapState extends State<EvacuationMap> with SingleTickerProvider
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildRouteDetail(Icons.timer, '15 min'),
-              _buildRouteDetail(Icons.directions_car, '5.2 km'),
-              _buildRouteDetail(Icons.speed, 'Fastest'),
+              _buildRouteDetail(Icons.timer, '$_routeDuration min'),
+              _buildRouteDetail(Icons.directions_car, '$_routeDistance km'),
+              _buildRouteDetail(Icons.speed, '${_averageSpeed.round()} km/h'),
             ],
           ),
         ],
       ),
     );
   }
-
   Widget _buildRouteDetail(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            color: Colors.grey[800],
-            fontWeight: FontWeight.w500,
+      return Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey[600]),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  void _toggleMapType() {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _currentMapType = _currentMapType == MapType.normal
-          ? MapType.satellite
-          : _currentMapType == MapType.satellite
-              ? MapType.hybrid
-              : MapType.normal;
-    });
-  }
-
-  void _goToCurrentLocation() {
-    HapticFeedback.selectionClick();
-    _mapController.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: widget.currentPosition,
-          zoom: 15.0,
-          tilt: 45.0,
-          bearing: 0.0,
-        ),
-      ),
-    );
-  }
-
-  void _clearRoute() {
-    setState(() {
-      widget.polylines.clear();
-    });
-  }
+        ],
+      );
+    }
 }
