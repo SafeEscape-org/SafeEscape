@@ -3,17 +3,18 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:disaster_management/core/constants/api_constants.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
 /// Example:
 /// ```dart
 /// import 'firebase_options.dart';
-// / // ...
-// / await Firebase.initializeApp(
-// /   options: DefaultFirebaseOptions.currentPlatform,
-// / );
-// / ```
+/// // ...
+/// await Firebase.initializeApp(
+///   options: DefaultFirebaseOptions.currentPlatform,
+/// );
+/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -49,20 +50,20 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBbTbSGzz7z2WmLqWP7zLePR0TO_wW_PAs',
-    appId: '1:841617839404:android:eb8cf767ac259f7d3c4889',
-    messagingSenderId: '841617839404',
-    projectId: 'disaster-management-de632',
-    storageBucket: 'disaster-management-de632.firebasestorage.app',
+  static final FirebaseOptions android = FirebaseOptions(
+    apiKey: ApiConstants.firebaseAndroidApiKey,
+    appId: ApiConstants.firebaseAndroidAppId,
+    messagingSenderId: ApiConstants.firebaseMessagingSenderId,
+    projectId: ApiConstants.firebaseProjectId,
+    storageBucket: ApiConstants.firebaseStorageBucket,
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBFcxhs2s06uIYioy-KKYypK5pRDqKiQts',
-    appId: '1:841617839404:ios:ecd856ac48e978983c4889',
-    messagingSenderId: '841617839404',
-    projectId: 'disaster-management-de632',
-    storageBucket: 'disaster-management-de632.firebasestorage.app',
-    iosBundleId: 'com.example.disasterManagement',
+  static final FirebaseOptions ios = FirebaseOptions(
+    apiKey: ApiConstants.firebaseIOSApiKey,
+    appId: ApiConstants.firebaseIOSAppId,
+    messagingSenderId: ApiConstants.firebaseMessagingSenderId,
+    projectId: ApiConstants.firebaseProjectId,
+    storageBucket: ApiConstants.firebaseStorageBucket,
+    iosBundleId: ApiConstants.firebaseIOSBundleId,
   );
 }

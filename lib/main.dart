@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:disaster_management/config/fcm_config.dart';
 import 'package:disaster_management/config/firebase_config.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/assistance_help_screen.dart';
@@ -12,12 +13,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/services/auth_service.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebaseConfig.initializeFirebase();
   await FCMConfig.initializeFCM();
-  
+
   runApp(const MyApp());
 }
 
@@ -34,11 +34,11 @@ class MyApp extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          
+
           if (snapshot.hasData) {
             return const MainScreen();
           }
-          
+
           return const RegistrationPage();
         },
       ),
@@ -66,21 +66,29 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _setupUserUpdates() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Initial updates
+      //update user location as user mmust get his latest location updates
+
+      // Initial location update
       await _authService.updateUserLocation(user.uid, context);
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken != null) {
-        await _authService.updateFCMToken(user.uid, fcmToken);
+
+      // Check and update FCM token if needed
+      bool tokenUpdated = await _authService.checkAndUpdateFCMToken(user.uid);
+      
+      // Show alert if token was updated
+      if (tokenUpdated && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification settings updated'),
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
-
-      // Listen for FCM token refreshes
-      FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-        _authService.updateFCMToken(user.uid, token);
-      });
-
-      // Set up periodic location updates
+    
+      //periodic location updates for user nearlest areas updates
+      // Update location less frequently to save battery
       _locationUpdateTimer = Timer.periodic(
-        const Duration(minutes: 15),
+        const Duration(minutes: 30), // Changed from 15 to 30 minutes
         (_) => _authService.updateUserLocation(user.uid, context),
       );
     }
@@ -91,6 +99,7 @@ class _MainScreenState extends State<MainScreen> {
     _locationUpdateTimer?.cancel();
     super.dispose();
   }
+
   int currentIndex = 0;
   void onTabSelected(int index) {
     if (currentIndex == index) return;
@@ -98,6 +107,7 @@ class _MainScreenState extends State<MainScreen> {
       currentIndex = index;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

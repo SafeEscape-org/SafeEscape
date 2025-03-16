@@ -50,6 +50,8 @@ class LocationService {
     }
   }
 
+
+
   static Future<bool> _isLocationServiceEnabled(BuildContext context) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {

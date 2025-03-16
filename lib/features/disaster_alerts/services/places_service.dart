@@ -46,38 +46,45 @@ class PlacesService {
     required LatLng destination,
   }) async {
     final url = Uri.parse(
-      'https://maps.googleapis.com/maps/api/directions/json?'  // Changed URL base
+      'http://172.31.208.1:5000/api/maps/directions?'
       'origin=${origin.latitude},${origin.longitude}'
       '&destination=${destination.latitude},${destination.longitude}'
-      '&mode=driving'
-      '&key=${ApiConstants.googleApiKey}'
     );
 
     try {
       final response = await http.get(url);
-      print('Directions API Response: ${response.body}'); // Debug log
+      print('API URL: $url');
+      print('Response Status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['status'] == 'OK') {
-          final points = data['routes'][0]['overview_polyline']['points'];
-          final polylinePoints = PolylinePoints();
-          final decodedPoints = polylinePoints.decodePolyline(points);
+        if (data['success'] == true && data['data'] != null) {
+          final route = data['data'][0];
+          final List<dynamic> steps = route['legs'][0]['steps'];
           
-          if (decodedPoints.isEmpty) {
+          List<LatLng> points = [];
+          for (var step in steps) {
+            final polyline = step['polyline']['points'];
+            final polylinePoints = PolylinePoints();
+            final decodedPoints = polylinePoints.decodePolyline(polyline);
+            
+            points.addAll(
+              decodedPoints.map((point) => LatLng(point.latitude, point.longitude))
+            );
+          }
+          
+          if (points.isEmpty) {
             throw Exception('No route found');
           }
           
-          return decodedPoints
-              .map((point) => LatLng(point.latitude, point.longitude))
-              .toList();
+          return points;
         }
-        throw Exception('Directions API Error: ${data['status']}');
+        throw Exception('Invalid response format');
       }
       throw Exception('Failed to fetch directions: ${response.statusCode}');
     } catch (e) {
-      print('Error fetching directions: $e'); // Debug log
+      print('Error fetching directions: $e');
       throw Exception('Error fetching directions: $e');
     }
   }

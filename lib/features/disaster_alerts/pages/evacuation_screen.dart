@@ -1,6 +1,11 @@
+import 'package:disaster_management/features/disaster_alerts/constants/colors.dart';
 import 'package:disaster_management/features/disaster_alerts/models/evacuation_place.dart';
 import 'package:disaster_management/features/disaster_alerts/services/places_service.dart';
+import 'package:disaster_management/features/disaster_alerts/utils/map_bounds_calculator.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/expanded_actions.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/expanded_map_preview.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,6 +36,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     _initializeLocation();
   }
 
+//must for frintend side  by location service as common location services server file
   Future<void> _initializeLocation() async {
     setState(() => _isLoading = true);
     try {
@@ -73,26 +79,13 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     }
   }
 
-
-
-  final _cardRadius = 24.0;
-  final _mapHeight = 0.32;
-  final _primaryColor = const Color(0xFF246BFD);
-  final _accentColor = const Color(0xFF4361EE);
-  final _backgroundColor = const Color(0xFFF8FAFF);
-  final _cardBackground = Colors.white;
-  final _shadowColor = const Color(0x1A000000);
-  final _textColor = const Color(0xFF2D3142);
-  final _subtitleColor = const Color(0xFF636A7C);
-  final _borderColor = const Color(0xFFEEF0F7);
-
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: EvacuationColors.backgroundColor,
       body: Stack(
         children: [
           SafeArea(
@@ -111,11 +104,11 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
-                            color: _textColor,
+                            color: EvacuationColors.textColor,
                           ),
                         ),
                         const SizedBox(height: 24),
-                         PlaceTypeSelector(
+                        PlaceTypeSelector(
                           selectedPlaceType: _selectedPlaceType,
                           onTypeSelected: (type) {
                             setState(() => _selectedPlaceType = type);
@@ -131,16 +124,16 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                   child: GestureDetector(
                     onTap: _showExpandedMap,
                     child: Container(
-                      height: screenHeight * _mapHeight,
+                      height: screenHeight * 0.4,
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(_cardRadius),
+                        borderRadius: BorderRadius.circular(24),
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            _cardBackground,
-                            _cardBackground.withOpacity(0.8),
+                            EvacuationColors.cardBackground,
+                            EvacuationColors.cardBackground.withOpacity(0.8),
                           ],
                         ),
                         border: Border.all(
@@ -212,7 +205,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                   child: Container(
                     margin: const EdgeInsets.only(top: 24),
                     decoration: BoxDecoration(
-                      color: _cardBackground,
+                      color: EvacuationColors.cardBackground,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(32),
                       ),
@@ -238,10 +231,9 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
-                                  color: _textColor,
+                                  color: EvacuationColors.textColor,
                                 ),
                               ),
-                              _buildRefreshButton(),
                             ],
                           ),
                         ),
@@ -255,70 +247,6 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
           ),
           const ChatAssistance(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpandButton() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.fullscreen, size: 16, color: Colors.black87),
-          SizedBox(width: 4),
-          Text(
-            'Full View',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRefreshButton() {
-    return Material(
-      color: _primaryColor.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: _fetchNearbyPlaces,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.refresh_rounded,
-                color: _primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Refresh',
-                style: TextStyle(
-                  color: _primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -347,7 +275,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
         minChildSize: 0.5,
         builder: (_, controller) => Container(
           decoration: BoxDecoration(
-            color: _cardBackground,
+            color: EvacuationColors.cardBackground,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
@@ -357,13 +285,14 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                 height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: _textColor.withOpacity(0.1),
+                  color: EvacuationColors.textColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               Expanded(
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
                   child: EvacuationMap(
                     currentPosition: _currentPosition!,
                     places: _places,
@@ -378,6 +307,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
       ),
     );
   }
+
   Widget _buildMapButton({
     required IconData icon,
     required VoidCallback onPressed,
@@ -402,6 +332,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
       ),
     );
   }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -425,7 +356,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     );
   }
 
-Widget _buildInfoChip({
+  Widget _buildInfoChip({
     required IconData icon,
     required String text,
     required Color color,
@@ -452,7 +383,7 @@ Widget _buildInfoChip({
             child: Text(
               text,
               style: GoogleFonts.inter(
-                color: _textColor,
+                color: EvacuationColors.textColor,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -472,7 +403,7 @@ Widget _buildInfoChip({
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 16),
       child: Material(
-        color: _cardBackground,
+        color: EvacuationColors.cardBackground,
         borderRadius: BorderRadius.circular(20),
         elevation: 2,
         child: InkWell(
@@ -483,7 +414,7 @@ Widget _buildInfoChip({
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _borderColor,
+                color: EvacuationColors.borderColor,
                 width: 1,
               ),
             ),
@@ -495,8 +426,8 @@ Widget _buildInfoChip({
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _primaryColor.withOpacity(0.1),
-                        _accentColor.withOpacity(0.1),
+                        EvacuationColors.primaryColor.withOpacity(0.1),
+                        EvacuationColors.accentColor.withOpacity(0.1),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -505,7 +436,7 @@ Widget _buildInfoChip({
                   ),
                   child: Icon(
                     placeIcon,
-                    color: _primaryColor,
+                    color: EvacuationColors.primaryColor,
                     size: 24,
                   ),
                 ),
@@ -517,7 +448,7 @@ Widget _buildInfoChip({
                       Text(
                         place.name,
                         style: GoogleFonts.inter(
-                          color: _textColor,
+                          color: EvacuationColors.textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           height: 1.3,
@@ -539,7 +470,7 @@ Widget _buildInfoChip({
                           _buildInfoChip(
                             icon: Icons.location_on_rounded,
                             text: place.vicinity,
-                            color: _primaryColor,
+                            color: EvacuationColors.primaryColor,
                           ),
                         ],
                       ),
@@ -552,12 +483,12 @@ Widget _buildInfoChip({
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.1),
+                      color: EvacuationColors.primaryColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.arrow_forward_ios_rounded,
-                      color: _primaryColor,
+                      color: EvacuationColors.primaryColor,
                       size: 16,
                     ),
                   ),
@@ -570,35 +501,6 @@ Widget _buildInfoChip({
     );
   }
 
-  Widget _buildStatusChip({
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 200),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLoadingIndicator() {
     return const Center(
       child: CircularProgressIndicator(color: Colors.white),
@@ -606,37 +508,18 @@ Widget _buildInfoChip({
   }
 
   Widget _buildPermissionDeniedMessage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.location_off, color: Colors.red, size: 48),
-          const SizedBox(height: 8),
-          const Text(
-            'Location access is denied.',
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () => LocationService.getCurrentLocation(context),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
+    return PermissionDeniedMessage(parentContext: context);
   }
-
-
 
   Widget _buildExpandedHeader(EvacuationPlace place) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       decoration: BoxDecoration(
-        color: _cardBackground,
+        color: EvacuationColors.cardBackground,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: _shadowColor,
+            color: EvacuationColors.shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -648,7 +531,7 @@ Widget _buildInfoChip({
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: _textColor.withOpacity(0.1),
+              color: EvacuationColors.textColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -662,8 +545,8 @@ Widget _buildInfoChip({
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _primaryColor.withOpacity(0.1),
-                        _accentColor.withOpacity(0.1),
+                        EvacuationColors.primaryColor.withOpacity(0.1),
+                        EvacuationColors.accentColor.withOpacity(0.1),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -672,7 +555,7 @@ Widget _buildInfoChip({
                   ),
                   child: Icon(
                     _selectedPlaceType.icon,
-                    color: _primaryColor,
+                    color: EvacuationColors.primaryColor,
                     size: 32,
                   ),
                 ),
@@ -689,7 +572,7 @@ Widget _buildInfoChip({
                         style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
-                          color: _textColor,
+                          color: EvacuationColors.textColor,
                           height: 1.2,
                         ),
                       ),
@@ -732,14 +615,14 @@ Widget _buildInfoChip({
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: _textColor,
+              color: EvacuationColors.textColor,
             ),
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _backgroundColor,
+              color: EvacuationColors.backgroundColor,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -771,10 +654,10 @@ Widget _buildInfoChip({
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _primaryColor.withOpacity(0.1),
+            color: EvacuationColors.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: _primaryColor, size: 24),
+          child: Icon(icon, color: EvacuationColors.primaryColor, size: 24),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -784,7 +667,7 @@ Widget _buildInfoChip({
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  color: _subtitleColor,
+                  color: EvacuationColors.subtitleColor,
                   fontSize: 14,
                 ),
               ),
@@ -792,7 +675,7 @@ Widget _buildInfoChip({
               Text(
                 value,
                 style: GoogleFonts.inter(
-                  color: _textColor,
+                  color: EvacuationColors.textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -805,122 +688,22 @@ Widget _buildInfoChip({
   }
 
   Widget _buildExpandedMap(EvacuationPlace place) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Route Preview',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: _textColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: _shadowColor,
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: EvacuationMap(
-                currentPosition: _currentPosition!,
-                places: [place],
-                polylines: _polylines,
-                onMapCreated: (controller) => mapController = controller,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ExpandedMapPreview(
+      place: place,
+      currentPosition: _currentPosition!,
+      polylines: _polylines,
+      onMapCreated: (controller) => mapController = controller,
     );
   }
 
   Widget _buildExpandedActions(EvacuationPlace place) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: ElevatedButton(
-        onPressed: () {
-          // Add navigation logic here
-          Navigator.pop(context);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.directions),
-            const SizedBox(width: 8),
-            Text(
-              'Start Navigation',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ExpandedActions(
+      onNavigationStart: () {
+        // Add navigation logic here
+        Navigator.pop(context);
+      },
     );
   }
-
-  Future<void> _fetchAndDisplayRoute(EvacuationPlace place) async {
-    try {
-      final polylinePoints = await PlacesService.getDirections(
-        origin: _currentPosition!,
-        destination: LatLng(place.lat, place.lng),
-      );
-
-      if (polylinePoints.isNotEmpty) {
-        final String polylineId = 'route_${place.placeId}';
-        final Polyline routePolyline = Polyline(
-          polylineId: PolylineId(polylineId),
-          points: polylinePoints,
-          color: _primaryColor,
-          width: 5,
-        );
-
-        setState(() {
-          _polylines.clear();
-          _polylines.add(routePolyline);
-        });
-
-        mapController.animateCamera(
-          CameraUpdate.newLatLngBounds(
-            _getBoundsForRoute(polylinePoints),
-            50,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to fetch route. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-
-
 
   Future<void> _showRouteToPlace(EvacuationPlace place) async {
     // Show expanded view first
@@ -939,11 +722,12 @@ Widget _buildInfoChip({
             child: Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
-                color: _cardBackground,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                color: EvacuationColors.cardBackground,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
                 boxShadow: [
                   BoxShadow(
-                    color: _shadowColor,
+                    color: EvacuationColors.shadowColor,
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -985,7 +769,7 @@ Widget _buildInfoChip({
         final Polyline routePolyline = Polyline(
           polylineId: PolylineId(polylineId),
           points: polylinePoints,
-          color: _primaryColor,
+          color: EvacuationColors.primaryColor,
           width: 5,
         );
 
@@ -993,10 +777,10 @@ Widget _buildInfoChip({
           _polylines.clear();
           _polylines.add(routePolyline);
         });
-
+// Remove the _getBoundsForRoute method and update where it's used
         mapController.animateCamera(
           CameraUpdate.newLatLngBounds(
-            _getBoundsForRoute(polylinePoints),
+            MapBoundsCalculator.getRouteLatLngBounds(polylinePoints),
             50,
           ),
         );
@@ -1009,26 +793,5 @@ Widget _buildInfoChip({
         ),
       );
     }
-  }
-
-  // Remove the duplicate _showRouteToPlace method
-
-  LatLngBounds _getBoundsForRoute(List<LatLng> points) {
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
-
-    for (var point in points) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLng) minLng = point.longitude;
-      if (point.longitude > maxLng) maxLng = point.longitude;
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
   }
 }

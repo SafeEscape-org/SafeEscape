@@ -48,3 +48,10 @@ app.*.map.json
 /lib/core/config/secrets.dart
 .env
 .env.*
+.qodo
+
+# Add this line to ignore the api_constants.dart file
+lib/core/constants/api_constants.dart
+
+# You might also want to create a template file for others to use
+# lib/core/constants/api_constants.template.dart

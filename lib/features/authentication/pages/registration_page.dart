@@ -1,3 +1,5 @@
+import 'package:disaster_management/features/authentication/widgets/background_pattern.dart';
+import 'package:disaster_management/features/authentication/widgets/location_search_dialog.dart'; // Add this import
 import 'package:disaster_management/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +9,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 // ignore: depend_on_referenced_packages
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../core/constants/app_colors.dart';
+import '../widgets/animated_dropdown_field.dart';
+import '../widgets/animated_button.dart';
+import '../widgets/animated_input_field.dart';
+import 'package:disaster_management/services/location_service.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -29,30 +36,14 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
   final _addressController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String _gender = 'Male';
-
-  // Updated modern design constants
-  final _borderRadius = 20.0;
-  final _primaryColor = const Color(0xFF007AFF); // iOS blue
-  final _accentColor = const Color(0xFF5AC8FA); // iOS light blue
-  final _backgroundColor = const Color(0xFFF2F6FC); // Light blue-tinted background
-  final _textColor = const Color(0xFF333333);
-  final _shadowColor = const Color(0x1A000000); // Semi-transparent shadow
-  
-  // Updated gradient for a more iOS feel
-  LinearGradient get _primaryGradient => LinearGradient(
-    colors: [_primaryColor, _accentColor],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
+  String _gender = 'Male';  
   // Light glass effect for cards
   BoxDecoration get _glassCardDecoration => BoxDecoration(
     color: Colors.white.withOpacity(0.9),
-    borderRadius: BorderRadius.circular(_borderRadius),
+    borderRadius: BorderRadius.circular(AppColors.borderRadius),
     boxShadow: [
       BoxShadow(
-        color: _shadowColor,
+        color: AppColors.shadowColor,
         blurRadius: 16,
         offset: const Offset(0, 4),
         spreadRadius: 0,
@@ -64,70 +55,13 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
     ),
   );
 
-  // Glass-like background elements
-  List<Widget> generateBackgroundPattern() {
-    return [
-      Positioned(
-        top: -100,
-        right: -50,
-        child: Container(
-          width: 250,
-          height: 250,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryColor.withOpacity(0.15), _accentColor.withOpacity(0.1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-      Positioned(
-        bottom: -120,
-        left: -80,
-        child: Container(
-          width: 280,
-          height: 280,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_accentColor.withOpacity(0.15), _primaryColor.withOpacity(0.1)],
-              begin: Alignment.bottomRight,
-              end: Alignment.topLeft,
-            ),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-      Positioned(
-        top: MediaQuery.of(context).size.height * 0.4,
-        left: MediaQuery.of(context).size.width * 0.5,
-        child: Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.purple.withOpacity(0.1), _accentColor.withOpacity(0.05)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: AppColors.backgroundColor,
       body: Stack(
         children: [
-          // Modern background pattern
-          ...generateBackgroundPattern(),
-          
-          // Main content
+          const BackgroundPattern(), // Replace generateBackgroundPattern()
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -146,11 +80,11 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                           Container(
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              gradient: _primaryGradient,
-                              borderRadius: BorderRadius.circular(_borderRadius),
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(AppColors.borderRadius),
                               boxShadow: [
                                 BoxShadow(
-                                  color: _primaryColor.withOpacity(0.3),
+                                  color: AppColors.primaryColor.withOpacity(0.3),
                                   blurRadius: 20,
                                   offset: const Offset(0, 10),
                                   spreadRadius: -5,
@@ -167,7 +101,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                           
                           // App name with gradient text
                           ShaderMask(
-                            shaderCallback: (bounds) => _primaryGradient.createShader(bounds),
+                            shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
                             child: Text(
                               'SafeEscape',
                               style: GoogleFonts.montserrat(
@@ -184,7 +118,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                             style: GoogleFonts.montserrat(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: _textColor.withOpacity(0.7),
+                              color: AppColors.textColor.withOpacity(0.7),
                             ),
                           ),
                         ],
@@ -208,7 +142,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                               style: GoogleFonts.montserrat(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w700,
-                                color: _textColor,
+                                color: AppColors.textColor,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -217,7 +151,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                               'Please fill in the details to get started',
                               style: GoogleFonts.montserrat(
                                 fontSize: 15,
-                                color: _textColor.withOpacity(0.6),
+                                color: AppColors.textColor.withOpacity(0.6),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -251,125 +185,29 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                               delay: 0.5,
                               keyboardType: TextInputType.phone,
                             ),
-                            _buildAnimatedInputField(
-                              controller: _addressController,
-                              label: 'Address',
-                              icon: Icons.location_on_outlined,
-                              delay: 0.6,
-                              maxLines: 2,
-                            ),
-                            
+                            _buildLocationSection(), // Add this line
                             // Gender dropdown with animation
-                            AnimatedBuilder(
+                            AnimatedDropdownField(
+                              value: _gender,
+                              label: 'Gender',
+                              prefixIcon: Icons.people_outline_rounded,
+                              items: const ['Male', 'Female', 'Other'],
+                              onChanged: (value) => setState(() => _gender = value!),
                               animation: _animationController,
-                              builder: (context, child) {
-                                return Transform.translate(
-                                  offset: Offset(0, 40 * (1 - _animationController.value)),
-                                  child: Opacity(
-                                    opacity: _animationController.value,
-                                    child: Container(
-                                      margin: const EdgeInsets.only(top: 16, bottom: 16),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.grey.shade200),
-                                        color: Colors.grey[50],
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: _shadowColor.withOpacity(0.05),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: DropdownButtonFormField<String>(
-                                        value: _gender,
-                                        decoration: InputDecoration(
-                                          border: InputBorder.none,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                          labelText: 'Gender',
-                                          labelStyle: GoogleFonts.montserrat(
-                                            color: Colors.grey[600],
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          prefixIcon: Icon(
-                                            Icons.people_outline_rounded,
-                                            color: _primaryColor.withOpacity(0.7),
-                                          ),
-                                        ),
-                                        style: GoogleFonts.montserrat(
-                                          fontSize: 16,
-                                          color: _textColor,
-                                        ),
-                                        borderRadius: BorderRadius.circular(16),
-                                        dropdownColor: Colors.white,
-                                        items: ['Male', 'Female', 'Other']
-                                            .map((label) => DropdownMenuItem(
-                                                  value: label,
-                                                  child: Text(
-                                                    label,
-                                                    style: GoogleFonts.montserrat(),
-                                                  ),
-                                                ))
-                                            .toList(),
-                                        onChanged: (value) {
-                                          setState(() => _gender = value!);
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                              delay: 0.6,
                             ),
                             
                             const SizedBox(height: 24),
                             
                             // Register button with animation
-                            AnimatedBuilder(
+                            AnimatedButton(
+                              onPressed: _handleRegistration,
+                              text: 'Create Account',
+                              isLoading: _isLoading,
                               animation: _animationController,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: 0.9 + (0.1 * _animationController.value),
-                                  child: Opacity(
-                                    opacity: _animationController.value,
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: 58,
-                                      child: ElevatedButton(
-                                        onPressed: _isLoading ? null : _handleRegistration,
-                                        style: ElevatedButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                          backgroundColor: _primaryColor,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(18),
-                                          ),
-                                          elevation: 4,
-                                          shadowColor: _primaryColor.withOpacity(0.4),
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
-                                        ),
-                                        child: _isLoading
-                                            ? SizedBox(
-                                                width: 24,
-                                                height: 24,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2.5,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                ),
-                                              )
-                                            : Text(
-                                                'Create Account',
-                                                style: GoogleFonts.montserrat(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
+                            
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
@@ -384,7 +222,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                           Text(
                             'Already have an account? ',
                             style: GoogleFonts.montserrat(
-                              color: _textColor.withOpacity(0.7),
+                              color: AppColors.textColor.withOpacity(0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -394,7 +232,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                             },
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
-                              foregroundColor: _primaryColor,
+                              foregroundColor: AppColors.primaryColor,
                             ),
                             child: Text(
                               'Sign In',
@@ -427,107 +265,42 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
     TextInputType? keyboardType,
     int maxLines = 1,
   }) {
-    return AnimatedBuilder(
+    return AnimatedInputField(
+      controller: controller,
+      label: label,
+      icon: icon,
+      delay: delay,
       animation: _animationController,
-      builder: (context, child) {
-        final double progress = Curves.easeOutCubic.transform(
-          ((_animationController.value - delay).clamp(0, 1 - delay)) / (1 - delay),
-        );
-
-        return Transform.translate(
-          offset: Offset(0, 40 * (1 - progress)),
-          child: Opacity(
-            opacity: progress,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 300),
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.98 + (0.02 * value),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _shadowColor.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: TextFormField(
-                        controller: controller,
-                        obscureText: isPassword && _obscurePassword,
-                        keyboardType: keyboardType,
-                        maxLines: maxLines,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 16,
-                          color: _textColor,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: label,
-                          labelStyle: GoogleFonts.montserrat(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          floatingLabelStyle: GoogleFonts.montserrat(
-                            color: _primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          prefixIcon: Icon(icon, color: _primaryColor.withOpacity(0.7), size: 22),
-                          suffixIcon: isPassword
-                              ? IconButton(
-                                  icon: Icon(
-                                    _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                                    color: Colors.grey[500],
-                                    size: 22,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscurePassword = !_obscurePassword),
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: Colors.grey[200]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: Colors.grey[200]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: _primaryColor, width: 1.5),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'This field is required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
+      isPassword: isPassword,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      obscureText: _obscurePassword,
+      onTogglePassword: isPassword ? () => setState(() => _obscurePassword = !_obscurePassword) : null,
     );
   }
 
   // Handle registration
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Check if location is selected
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select your location',
+            style: GoogleFonts.montserrat(),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -539,6 +312,9 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
         password: _passwordController.text,
         phone: _phoneController.text.trim(),
         emergencyContacts: [],
+        latitude: _latitude!,
+        longitude: _longitude!,
+        address: _selectedAddress ?? '',
       );
     } catch (e) {
       if (mounted) {
@@ -609,4 +385,126 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
     _addressController.dispose();
     super.dispose();
   }
-}
+  
+  // Add these variables
+  String? _selectedAddress;
+  double? _latitude;
+  double? _longitude;
+  bool _isLoadingLocation = false;
+
+  // Add this method to handle current location selection
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      final locationData = await LocationService.getCurrentLocation(context);
+      if (locationData != null) {
+        setState(() {
+          _latitude = locationData['latitude'];
+          _longitude = locationData['longitude'];
+          _selectedAddress = locationData['address'];
+          _addressController.text = locationData['address'] ?? '';
+        });
+      }
+    } finally {
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  // Add this widget before the gender dropdown in the form
+  Widget _buildLocationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          'Location',
+          style: GoogleFonts.montserrat(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: AnimatedInputField(
+                controller: _addressController,
+                label: 'Address',
+                icon: Icons.location_on_outlined,
+                delay: 0.6,
+                animation: _animationController,
+                maxLines: 2,
+                // Use readOnly instead of enabled if AnimatedInputField supports it
+                // readOnly: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Custom location search button
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _openLocationSearch,
+                icon: const Icon(Icons.search_rounded, color: Colors.white),
+                tooltip: 'Search location',
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Current location button
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                icon: _isLoadingLocation
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.my_location, color: Colors.white),
+                tooltip: 'Use current location',
+              ),
+            ),
+          ],
+        ),
+        if (_selectedAddress != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Selected: $_selectedAddress',
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                color: AppColors.primaryColor,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+  
+  // Add this method to open location search dialog
+  Future<void> _openLocationSearch() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => const LocationSearchDialog(), // Add const here
+    );
+    
+    if (result != null) {
+      setState(() {
+        _latitude = result['latitude'];
+        _longitude = result['longitude'];
+        _selectedAddress = result['address'];
+        _addressController.text = result['address'] ?? '';
+      });
+    }
+  } // End of _buildLocationSection
+} // End of _RegistrationPageState
