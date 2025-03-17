@@ -10,7 +10,7 @@ class EmergencyScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF0A0A0A),
       body: Column(
         children: [
-          const HeaderComponent(),
+          HeaderComponent(onMenuPressed: () {}),
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -59,7 +59,7 @@ class EmergencyScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                   // Emergency Section
                   Container(
                     margin: const EdgeInsets.all(16),
@@ -117,7 +117,8 @@ class EmergencyScreen extends StatelessWidget {
                                   // Pulsing background effect
                                   TweenAnimationBuilder(
                                     tween: Tween<double>(begin: 0.6, end: 1.0),
-                                    duration: const Duration(milliseconds: 1500),
+                                    duration:
+                                        const Duration(milliseconds: 1500),
                                     curve: Curves.easeInOut,
                                     builder: (context, value, child) {
                                       return Transform.scale(
@@ -156,7 +157,8 @@ class EmergencyScreen extends StatelessWidget {
                                       ],
                                     ),
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         const Icon(
                                           Icons.emergency_rounded,
@@ -173,7 +175,8 @@ class EmergencyScreen extends StatelessWidget {
                                             letterSpacing: 2,
                                             shadows: [
                                               Shadow(
-                                                color: Colors.black.withOpacity(0.3),
+                                                color: Colors.black
+                                                    .withOpacity(0.3),
                                                 blurRadius: 10,
                                                 offset: const Offset(0, 2),
                                               )

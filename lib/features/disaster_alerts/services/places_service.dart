@@ -46,9 +46,13 @@ class PlacesService {
     required LatLng destination,
   }) async {
     final url = Uri.parse(
-      'http://172.31.208.1:5000/api/maps/directions?'
+      'https://maps.googleapis.com/maps/api/directions/json?'
       'origin=${origin.latitude},${origin.longitude}'
       '&destination=${destination.latitude},${destination.longitude}'
+      '&mode=driving'
+      '&alternatives=true'
+      '&avoid=tolls'
+      '&key=${ApiConstants.googleApiKey}'
     );
 
     try {
@@ -59,19 +63,23 @@ class PlacesService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
-        if (data['success'] == true && data['data'] != null) {
-          final route = data['data'][0];
-          final List<dynamic> steps = route['legs'][0]['steps'];
+        if (data['status'] == 'OK' && data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final List<dynamic> legs = route['legs'];
           
           List<LatLng> points = [];
-          for (var step in steps) {
-            final polyline = step['polyline']['points'];
-            final polylinePoints = PolylinePoints();
-            final decodedPoints = polylinePoints.decodePolyline(polyline);
+          for (var leg in legs) {
+            final List<dynamic> steps = leg['steps'];
             
-            points.addAll(
-              decodedPoints.map((point) => LatLng(point.latitude, point.longitude))
-            );
+            for (var step in steps) {
+              final polyline = step['polyline']['points'];
+              final polylinePoints = PolylinePoints();
+              final decodedPoints = polylinePoints.decodePolyline(polyline);
+              
+              points.addAll(
+                decodedPoints.map((point) => LatLng(point.latitude, point.longitude))
+              );
+            }
           }
           
           if (points.isEmpty) {
@@ -80,7 +88,7 @@ class PlacesService {
           
           return points;
         }
-        throw Exception('Invalid response format');
+        throw Exception('API Error: ${data['status']}');
       }
       throw Exception('Failed to fetch directions: ${response.statusCode}');
     } catch (e) {

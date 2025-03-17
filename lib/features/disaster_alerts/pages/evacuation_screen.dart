@@ -7,6 +7,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/expanded_ma
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -86,13 +87,22 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
 
     return Scaffold(
       backgroundColor: EvacuationColors.backgroundColor,
+      drawer: const SideNavigation(userName: 'abc'), // Add the drawer here
       body: Stack(
         children: [
           SafeArea(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                const SliverToBoxAdapter(child: HeaderComponent()),
+                SliverToBoxAdapter(
+                  child: Builder(  // Wrap with Builder to get correct context
+                    builder: (BuildContext context) => HeaderComponent(
+                      onMenuPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  ),
+                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
