@@ -15,28 +15,31 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/services/auth_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:provider/provider.dart';
+import 'package:disaster_management/services/socket_service.dart';
 
-void main() async {
-  // Ensure Flutter is initialized first
+ void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Initialize Firebase first before any other operations
     await FirebaseConfig.initializeFirebase();
-    
-    // Preserve splash screen while initializing
     FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-    
-    // Initialize FCM after Firebase
     await FCMConfig.initializeFCM();
   } catch (e) {
     debugPrint('Initialization error: $e');
   }
   
-  // Run the app after all initializations
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => SocketService(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
   
-  // Add a small delay before removing splash to ensure proper initialization
   await Future.delayed(const Duration(milliseconds: 500));
   FlutterNativeSplash.remove();
 }
@@ -46,12 +49,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: SocketService().navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
         primaryColor: AppColors.primaryColor,
         scaffoldBackgroundColor: Colors.white,
-        // Add this to ensure consistent initial rendering
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
             TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
@@ -59,23 +62,26 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      // Changed from SplashScreen to auth route
       initialRoute: '/auth',
       routes: {
-        '/auth': (context) => StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
+        '/auth': (context) => Consumer<SocketService>(
+          builder: (context, socketService, child) {
+            return StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-            if (snapshot.hasData) {
-              return const MainScreen();
-            }
+                if (snapshot.hasData) {
+                  return const MainScreen();
+                }
 
-            return const RegistrationPage();
+                return const RegistrationPage();
+              },
+            );
           },
         ),
         '/home': (context) => const MainScreen(),
@@ -99,6 +105,19 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _setupUserUpdates();
+    _initializeSocket();
+  }
+
+  void _initializeSocket() {
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user != null) {
+      socketService.socket.emit('user_connected', {
+        'userId': user.uid,
+        'email': user.email,
+      });
+    }
   }
 
   Future<void> _setupUserUpdates() async {
@@ -135,6 +154,8 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _locationUpdateTimer?.cancel();
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.socket.disconnect();
     super.dispose();
   }
 

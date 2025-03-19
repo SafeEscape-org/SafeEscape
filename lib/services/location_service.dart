@@ -35,7 +35,7 @@ class LocationService {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
-      String? address = await _getAddressFromCoordinates(
+      String? address = await getAddressFromCoordinates(  // Removed underscore
           position.latitude, position.longitude);
 
       return {
@@ -50,35 +50,8 @@ class LocationService {
     }
   }
 
-
-
-  static Future<bool> _isLocationServiceEnabled(BuildContext context) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _showLocationServiceDialog(context);
-      return false;
-    }
-    return true;
-  }
-
-  static Future<bool> _requestLocationPermission(BuildContext context) async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      _showPermissionDeniedForeverDialog(context);
-      return false;
-    }
-
-    return true;
-  }
-
-  static Future<String?> _getAddressFromCoordinates(double lat, double lon) async {
+  // Changed from private to public method
+  static Future<String?> getAddressFromCoordinates(double lat, double lon) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lon);
       return placemarks.isNotEmpty
@@ -128,4 +101,32 @@ class LocationService {
       ),
     );
   }
+
+  static Future<bool> _isLocationServiceEnabled(BuildContext context) async {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showLocationServiceDialog(context);
+        return false;
+      }
+      return true;
+    }
+
+    static Future<bool> _requestLocationPermission(BuildContext context) async {
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return false;
+        }
+      }
+  
+      if (permission == LocationPermission.deniedForever) {
+        _showPermissionDeniedForeverDialog(context);
+        return false;
+      }
+  
+      return permission == LocationPermission.always || 
+             permission == LocationPermission.whileInUse;
+    }
 }

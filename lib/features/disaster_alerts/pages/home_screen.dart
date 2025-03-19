@@ -5,6 +5,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/current_wea
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/recent_earthquakes_card.dart';
 import 'package:disaster_management/services/location_service.dart';
+import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
@@ -28,12 +29,52 @@ class _CombinedHomeWeatherComponentState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Removed _fetchLocationData() call since API isn't ready
+    _fetchLocationData();
   }
 
   Future<void> _fetchLocationData() async {
-    // Keep this empty for now or comment out the implementation
-    // Will implement when API is ready
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final locationService = LocationService();
+      final location = await LocationService.getCurrentLocation(context);
+      
+      if (location != null) {
+        final address = await LocationService.getAddressFromCoordinates(  // Removed underscore
+          location['latitude'], 
+          location['longitude']
+        );
+        
+        setState(() {
+          _locationName = address ?? "Unknown Location";
+          _locationData = {
+            'latitude': location['latitude'],
+            'longitude': location['longitude'],
+            'city': address?.split(',').first ?? "Unknown",
+          };
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _locationName = "Mumbai, India";
+          _locationData = {
+            'city': "Mumbai",
+          };
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching location: $e');
+      setState(() {
+        _locationName = "Mumbai, India";
+        _locationData = {
+          'city': "Mumbai",
+        };
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -52,55 +93,25 @@ class _CombinedHomeWeatherComponentState
 
   @override
   Widget build(BuildContext context) {
-    // Set status bar to transparent
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-    
-    return Scaffold(
+    return AppScaffold(
+      locationName: _locationName,
       backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _fetchLocationData,
-          color: AppColors.primaryColor,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(), // iOS-like smooth scrolling
-            slivers: [
-              // App Bar
-              SliverAppBar(
-                expandedHeight: 100, // Reduced from 120
-                floating: true,
-                pinned: false,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                automaticallyImplyLeading: false,
-                flexibleSpace: FlexibleSpaceBar(
-                  expandedTitleScale: 1.0, // Prevent title scaling
-                  background: Builder(
-                    builder: (BuildContext context) => HeaderComponent(
-                      locationName: _locationName,
-                      onMenuPressed: () {
-                        Scaffold.of(context).openDrawer();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Content
-              SliverToBoxAdapter(
-                child: _isLoading 
-                  ? _buildLoadingState()
-                  : _buildContent(),
-              ),
-            ],
-          ),
+      drawer: const SideNavigation(userName: 'abc'),
+      body: RefreshIndicator(
+        onRefresh: _fetchLocationData,
+        color: AppColors.primaryColor,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Content
+            SliverToBoxAdapter(
+              child: _isLoading 
+                ? _buildLoadingState()
+                : _buildContent(),
+            ),
+          ],
         ),
       ),
-      drawer: const SideNavigation(userName: 'abc',),
     );
   }
   
@@ -134,7 +145,7 @@ class _CombinedHomeWeatherComponentState
         children: [
           // Current Weather Section
           _buildSectionTitle('Current Weather'),
-          const CurrentWeatherCard(),
+          CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
           
           const SizedBox(height: 24),
           

@@ -123,7 +123,14 @@ class _AlertCardState extends State<AlertCard> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (mounted) {
+      _controller.stop();  // Stop animation before disposal
+      Future.microtask(() {
+        if (mounted) {
+          _controller.dispose();
+        }
+      });
+    }
     super.dispose();
   }
 

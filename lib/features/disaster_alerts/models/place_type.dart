@@ -4,7 +4,7 @@ enum PlaceType {
   police('police', 'Police Stations', Icons.local_police),
   fire('fire_station', 'Fire Stations', Icons.fire_truck),
   shelter('shelter', 'Emergency Shelters', Icons.house),
-  pharmacy('pharmacy', 'Pharmacies', Icons.local_pharmacy);
+  pharmacy('pharmacy', 'Pharmacies', Icons.medical_services); // Updated icon
 
   final String value;
   final String label;
