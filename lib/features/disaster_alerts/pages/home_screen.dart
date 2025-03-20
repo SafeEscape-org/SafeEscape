@@ -94,7 +94,7 @@ class _CombinedHomeWeatherComponentState
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      locationName: _locationName,
+      locationName: _isLoading ? "Loading..." : _locationName,
       backgroundColor: AppColors.backgroundColor,
       drawer: const SideNavigation(userName: 'abc'),
       body: RefreshIndicator(
@@ -105,34 +105,10 @@ class _CombinedHomeWeatherComponentState
           slivers: [
             // Content
             SliverToBoxAdapter(
-              child: _isLoading 
-                ? _buildLoadingState()
-                : _buildContent(),
+              child: _buildContent(),
             ),
           ],
         ),
-      ),
-    );
-  }
-  
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 100),
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Loading disaster information...',
-            style: TextStyle(
-              color: AppColors.textColor,
-              fontSize: 16,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -145,84 +121,168 @@ class _CombinedHomeWeatherComponentState
         children: [
           // Current Weather Section
           _buildSectionTitle('Current Weather'),
-          CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
+          _isLoading 
+            ? _buildShimmerLoading(height: 180)
+            : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
           
           const SizedBox(height: 24),
           
           // Active Alerts Section
           _buildSectionTitle('Active Alerts'),
-          const AlertCard(
-            title: 'Flood Warning',
-            description: 'Flash flood warning in effect until 8:00 PM',
-            severity: 'Severe',
-            time: '2 hours ago',
-            alertType: 'flood', // Changed from icon to alertType
-            color: Colors.blue,
-          ),
-          const SizedBox(height: 12),
-          const AlertCard(
-            title: 'Heat Advisory',
-            description: 'Excessive heat warning until tomorrow evening',
-            severity: 'Moderate',
-            time: '5 hours ago',
-            alertType: 'fire', // Changed from icon to alertType
-            color: Colors.orange,
-          ),
+          _isLoading 
+            ? Column(
+                children: [
+                  _buildShimmerLoading(height: 120),
+                  const SizedBox(height: 12),
+                  _buildShimmerLoading(height: 120),
+                ],
+              )
+            : Column(
+                children: const [
+                  AlertCard(
+                    title: 'Flood Warning',
+                    description: 'Flash flood warning in effect until 8:00 PM',
+                    severity: 'Severe',
+                    time: '2 hours ago',
+                    alertType: 'flood',
+                    color: Colors.blue,
+                  ),
+                  SizedBox(height: 12),
+                  AlertCard(
+                    title: 'Heat Advisory',
+                    description: 'Excessive heat warning until tomorrow evening',
+                    severity: 'Moderate',
+                    time: '5 hours ago',
+                    alertType: 'fire',
+                    color: Colors.orange,
+                  ),
+                ],
+              ),
           const SizedBox(height: 24),
           
           // Recent Earthquakes Section
           _buildSectionTitle('Recent Earthquakes'),
-          const RecentEarthquakesCard(),
+          _isLoading 
+            ? _buildShimmerLoading(height: 200)
+            : const RecentEarthquakesCard(),
           
           const SizedBox(height: 24),
           
           // Disaster Declarations Section
           _buildSectionTitle('Disaster Declarations'),
-          const DisasterDeclarationCard(
-            title: 'Severe Storms and Flooding',
-            type: 'Flood',
-            location: 'Los Angeles County, CA',
-            date: '2023-05-15',
-            status: 'Active',
-          ),
-          const SizedBox(height: 12),
-          const DisasterDeclarationCard(
-            title: 'Hurricane Ian',
-            type: 'Hurricane',
-            location: 'Miami-Dade County, FL',
-            date: '2023-04-22',
-            status: 'Active',
-          ),
-          const SizedBox(height: 12),
-          const DisasterDeclarationCard(
-            title: 'Wildfire',
-            type: 'Fire',
-            location: 'San Diego County, CA',
-            date: '2023-03-10',
-            status: 'Closed',
-          ),
-          const AlertCard(
-            title: 'Earthquake Alert',
-            description: 'Magnitude 4.2 earthquake detected nearby',
-            severity: 'High',
-            time: '10 minutes ago',
-            alertType: 'earthquake',
-            color: Colors.red,
-          ),
-          const SizedBox(height: 12),
-          const AlertCard(
-            title: 'Storm Warning',
-            description: 'Severe thunderstorm approaching the area',
-            severity: 'Severe',
-            time: '1 hour ago',
-            alertType: 'storm',
-            color: Colors.purple,
-          ),
+          _isLoading 
+            ? Column(
+                children: [
+                  _buildShimmerLoading(height: 100),
+                  const SizedBox(height: 12),
+                  _buildShimmerLoading(height: 100),
+                  const SizedBox(height: 12),
+                  _buildShimmerLoading(height: 100),
+                ],
+              )
+            : Column(
+                children: const [
+                  DisasterDeclarationCard(
+                    title: 'Severe Storms and Flooding',
+                    type: 'Flood',
+                    location: 'Los Angeles County, CA',
+                    date: '2023-05-15',
+                    status: 'Active',
+                  ),
+                  SizedBox(height: 12),
+                  DisasterDeclarationCard(
+                    title: 'Hurricane Ian',
+                    type: 'Hurricane',
+                    location: 'Miami-Dade County, FL',
+                    date: '2023-04-22',
+                    status: 'Active',
+                  ),
+                  SizedBox(height: 12),
+                  DisasterDeclarationCard(
+                    title: 'Wildfire',
+                    type: 'Fire',
+                    location: 'San Diego County, CA',
+                    date: '2023-03-10',
+                    status: 'Closed',
+                  ),
+                  AlertCard(
+                    title: 'Earthquake Alert',
+                    description: 'Magnitude 4.2 earthquake detected nearby',
+                    severity: 'High',
+                    time: '10 minutes ago',
+                    alertType: 'earthquake',
+                    color: Colors.red,
+                  ),
+                  SizedBox(height: 12),
+                  AlertCard(
+                    title: 'Storm Warning',
+                    description: 'Severe thunderstorm approaching the area',
+                    severity: 'Severe',
+                    time: '1 hour ago',
+                    alertType: 'storm',
+                    color: Colors.purple,
+                  ),
+                ],
+              ),
           const SizedBox(height: 24),
           
           // Add some padding at the bottom
           const SizedBox(height: 100),
         ],
+      ),
+    );
+  }
+  
+  // Add this new shimmer loading widget
+  Widget _buildShimmerLoading({required double height}) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              height: height,
+              color: Colors.blue[50],
+            ),
+            Positioned.fill(
+              child: ShaderMask(
+                shaderCallback: (Rect bounds) {
+                  return LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Colors.blue[100]!,
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcATop,
+                child: Container(
+                  width: double.infinity,
+                  height: height,
+                  color: Colors.blue[50],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

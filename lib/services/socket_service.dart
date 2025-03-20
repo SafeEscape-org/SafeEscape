@@ -3,6 +3,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
 import 'package:disaster_management/widgets/alert_notification.dart';
 import 'dart:ui';
+import 'dart:async';
 
 class SocketService extends ChangeNotifier {
   static final SocketService _instance = SocketService._internal();
@@ -10,26 +11,37 @@ class SocketService extends ChangeNotifier {
   
   late IO.Socket socket;
   bool isConnected = false;
+  bool _isInitialized = false;
+  bool _isAttemptingReconnect = false;
+  int _reconnectAttempts = 0;
+  final int _maxReconnectAttempts = 5;
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  Timer? _reconnectTimer;
 
   SocketService._internal() {
     _initializeSocket();
   }
 
   void _initializeSocket() {
+    if (_isInitialized) return;
+    
     debugPrint('📡 Attempting to connect to socket server...');
     
     socket = IO.io('http://:5000', {
       'transports': ['websocket', 'polling'],
-      'autoConnect': true,
-      'reconnection': true,
-      'reconnectionDelay': 1000,
-      'reconnectionAttempts': 5,
+      'autoConnect': false, // Changed to false to control connection manually
+      'reconnection': false, // We'll handle reconnection ourselves
       'timeout': 20000,
       'forceNew': true,
     });
 
     _setupSocketListeners();
+    _isInitialized = true;
+    
+    // Connect after a short delay to avoid immediate connection attempts during app startup
+    Future.delayed(const Duration(milliseconds: 500), () {
+      connectSocket();
+    });
   }
 
   Map<String, dynamic> _parseSocketData(dynamic data, String defaultTitle) {
@@ -80,6 +92,9 @@ class SocketService extends ChangeNotifier {
     socket.onConnect((_) {
       debugPrint('🟢 Connected to socket server with ID: ${socket.id}');
       isConnected = true;
+      _reconnectAttempts = 0;
+      _isAttemptingReconnect = false;
+      _cancelReconnectTimer();
       notifyListeners();
     });
 
@@ -103,15 +118,62 @@ class SocketService extends ChangeNotifier {
 
     socket.onConnectError((data) {
       debugPrint('❌ Connection error: $data');
-      isConnected = false;
-      notifyListeners();
+      if (!_isAttemptingReconnect) {
+        isConnected = false;
+        notifyListeners();
+        _scheduleReconnect();
+      }
     });
 
     socket.onDisconnect((_) {
       debugPrint('🔴 Disconnected from server');
-      isConnected = false;
-      notifyListeners();
+      if (!_isAttemptingReconnect) {
+        isConnected = false;
+        notifyListeners();
+        _scheduleReconnect();
+      }
     });
+  }
+
+  void _scheduleReconnect() {
+    if (_isAttemptingReconnect || _reconnectAttempts >= _maxReconnectAttempts) return;
+    
+    _isAttemptingReconnect = true;
+    _reconnectAttempts++;
+    
+    // Use exponential backoff for reconnection attempts
+    final delay = Duration(milliseconds: 1000 * (1 << _reconnectAttempts.clamp(0, 6)));
+    debugPrint('📡 Scheduling reconnect attempt $_reconnectAttempts in ${delay.inSeconds}s');
+    
+    _cancelReconnectTimer();
+    _reconnectTimer = Timer(delay, () {
+      if (!isConnected) {
+        debugPrint('📡 Attempting to reconnect...');
+        _isAttemptingReconnect = false;
+        connectSocket();
+      }
+    });
+  }
+
+  void _cancelReconnectTimer() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+  }
+
+  void connectSocket() {
+    if (!_isInitialized) {
+      _initializeSocket();
+      return;
+    }
+    
+    try {
+      if (!socket.connected) {
+        socket.connect();
+      }
+    } catch (e) {
+      debugPrint('Error connecting socket: $e');
+      _scheduleReconnect();
+    }
   }
 
   void _showNotification(String title, String message, String alertType) {
@@ -184,6 +246,8 @@ class SocketService extends ChangeNotifier {
 
   void disconnect() {
     try {
+      _cancelReconnectTimer();
+      _isAttemptingReconnect = false;
       socket.disconnect();
     } catch (e) {
       debugPrint('Error disconnecting socket: $e');
@@ -191,10 +255,14 @@ class SocketService extends ChangeNotifier {
   }
 
   void reconnect() {
-    try {
-      socket.connect();
-    } catch (e) {
-      debugPrint('Error reconnecting socket: $e');
-    }
+    _reconnectAttempts = 0;
+    _isAttemptingReconnect = false;
+    connectSocket();
+  }
+  
+  @override
+  void dispose() {
+    disconnect();
+    super.dispose();
   }
 }

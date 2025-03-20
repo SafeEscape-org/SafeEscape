@@ -22,6 +22,8 @@ class DisasterDeclarationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isActive = status.toLowerCase() == 'active';
     final Color statusColor = isActive ? AppColors.primaryColor : Colors.grey;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
     
     IconData typeIcon;
     Color typeColor;
@@ -63,7 +65,7 @@ class DisasterDeclarationCard extends StatelessWidget {
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: Colors.white,
@@ -72,9 +74,10 @@ class DisasterDeclarationCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(16),
@@ -82,10 +85,10 @@ class DisasterDeclarationCard extends StatelessWidget {
                   child: Icon(
                     typeIcon,
                     color: AppColors.primaryColor,
-                    size: 24,
+                    size: isSmallScreen ? 20 : 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +97,7 @@ class DisasterDeclarationCard extends StatelessWidget {
                         title,
                         style: GoogleFonts.inter(
                           color: AppColors.textColor,
-                          fontSize: 16,
+                          fontSize: isSmallScreen ? 14 : 16,
                           fontWeight: FontWeight.w600,
                           height: 1.2,
                         ),
@@ -102,27 +105,41 @@ class DisasterDeclarationCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      _buildStatusChip(status, statusColor),
+                      _buildStatusChip(status, statusColor, isSmallScreen),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
               decoration: BoxDecoration(
                 color: AppColors.primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildInfoItem(Icons.location_on_rounded, location),
-                  _buildInfoItem(Icons.calendar_today_rounded, date),
-                  _buildTypeChip(type, typeColor),
-                ],
-              ),
+              child: isSmallScreen
+                  ? Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildInfoItem(Icons.location_on_rounded, location, isSmallScreen),
+                            _buildInfoItem(Icons.calendar_today_rounded, date, isSmallScreen),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildTypeChip(type, typeColor, isSmallScreen),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: _buildInfoItem(Icons.location_on_rounded, location, isSmallScreen)),
+                        Flexible(child: _buildInfoItem(Icons.calendar_today_rounded, date, isSmallScreen)),
+                        _buildTypeChip(type, typeColor, isSmallScreen),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -130,30 +147,37 @@ class DisasterDeclarationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String text) {
+  Widget _buildInfoItem(IconData icon, String text, bool isSmallScreen) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
-          size: 16,
+          size: isSmallScreen ? 14 : 16,
           color: AppColors.primaryColor,
         ),
         const SizedBox(width: 6),
-        Text(
-          text,
-          style: GoogleFonts.inter(
-            color: AppColors.textColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              color: AppColors.textColor,
+              fontSize: isSmallScreen ? 11 : 13,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatusChip(String status, Color color) {
+  Widget _buildStatusChip(String status, Color color, bool isSmallScreen) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 6 : 8, 
+        vertical: isSmallScreen ? 3 : 4
+      ),
       decoration: BoxDecoration(
         color: AppColors.primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
@@ -162,19 +186,19 @@ class DisasterDeclarationCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: isSmallScreen ? 5 : 6,
+            height: isSmallScreen ? 5 : 6,
             decoration: BoxDecoration(
               color: AppColors.primaryColor,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: isSmallScreen ? 3 : 4),
           Text(
             status,
             style: GoogleFonts.inter(
               color: AppColors.primaryColor,
-              fontSize: 12,
+              fontSize: isSmallScreen ? 10 : 12,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -183,9 +207,12 @@ class DisasterDeclarationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTypeChip(String type, Color color) {
+  Widget _buildTypeChip(String type, Color color, bool isSmallScreen) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8 : 10, 
+        vertical: isSmallScreen ? 3 : 4
+      ),
       decoration: BoxDecoration(
         color: AppColors.primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
@@ -194,7 +221,7 @@ class DisasterDeclarationCard extends StatelessWidget {
         type,
         style: GoogleFonts.inter(
           color: AppColors.primaryColor,
-          fontSize: 12,
+          fontSize: isSmallScreen ? 10 : 12,
           fontWeight: FontWeight.w600,
         ),
       ),

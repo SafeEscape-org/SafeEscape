@@ -8,6 +8,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/headerCompo
 import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
+import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -30,13 +31,37 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   bool _isLoading = false;
   Set<Polyline> _polylines = {};
   PlaceType _selectedPlaceType = PlaceType.hospital;
+  String _locationName = "Finding location..."; // Add this variable
+
+  //chunking
+  final int _initialLoadCount = 5;
+  List<EvacuationPlace> _displayedPlaces = [];
+  bool _isLoadingMore = false;
+  String? _nextPageToken;
+  final ScrollController _placesScrollController = ScrollController();
+  List<EvacuationPlace> _allPlaces = [];
 
   @override
   void initState() {
     super.initState();
     _initializeLocation();
+    _placesScrollController.addListener(_scrollListener);
   }
 
+    @override
+  void dispose() {
+    _placesScrollController.removeListener(_scrollListener);
+    _placesScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_placesScrollController.position.pixels >= 
+        _placesScrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore) {
+      _loadMorePlaces();
+    }
+  }
 //must for frintend side  by location service as common location services server file
   Future<void> _initializeLocation() async {
     setState(() => _isLoading = true);
@@ -47,8 +72,18 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
           locationData["latitude"] as double,
           locationData["longitude"] as double,
         );
-        setState(() => _currentPosition = position);
-        await _fetchNearbyPlaces();
+        
+        // Get address from coordinates
+        final address = await LocationService.getAddressFromCoordinates(
+          locationData["latitude"] as double,
+          locationData["longitude"] as double,
+        );
+        
+        setState(() {
+          _currentPosition = position;
+          _locationName = address ?? "Unknown Location"; // Set location name
+        });
+        await _fetchNearbyPlaces(); //this will by default fetch hosppitls
       } else {
         setState(() => _locationPermissionDenied = true);
       }
@@ -57,21 +92,34 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     }
   }
 
-  Future<void> _fetchNearbyPlaces() async {
+Future<void> _fetchNearbyPlaces() async {
     if (_currentPosition == null) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _allPlaces = [];
+      _displayedPlaces = [];
+      _nextPageToken = null;
+    });
+    
     try {
-      final places = await PlacesService.getNearbyPlaces(
+      final result = await PlacesService.getNearbyPlacesWithToken(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
         type: _selectedPlaceType.value,
       );
-      setState(() => _places = places);
+      
+      final places = result['places'] as List<EvacuationPlace>;
+      _nextPageToken = result['next_page_token'];
+      
+      setState(() {
+        _allPlaces = places;
+        _displayedPlaces = places.take(_initialLoadCount).toList();
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to fetch nearby places'),
+        SnackBar(
+          content: Text('Failed to fetch nearby places: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -80,29 +128,74 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     }
   }
 
+  //more places loader added by self logic
+    Future<void> _loadMorePlaces() async {
+    // If we've already displayed all places from the current batch
+    if (_displayedPlaces.length < _allPlaces.length) {
+      setState(() {
+        final remainingPlaces = _allPlaces.length - _displayedPlaces.length;
+        final itemsToAdd = remainingPlaces > 5 ? 5 : remainingPlaces;
+        _displayedPlaces.addAll(
+          _allPlaces.getRange(
+            _displayedPlaces.length, 
+            _displayedPlaces.length + itemsToAdd
+          )
+        );
+      });
+      return;
+    }
+    
+    // If we need to fetch more from the API
+    if (_nextPageToken != null) {
+      setState(() => _isLoadingMore = true);
+      
+      try {
+        final result = await PlacesService.getNearbyPlacesWithToken(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          type: _selectedPlaceType.value,
+          pageToken: _nextPageToken,
+        );
+        
+        final newPlaces = result['places'] as List<EvacuationPlace>;
+        
+        setState(() {
+          _nextPageToken = result['next_page_token'];
+          _allPlaces.addAll(newPlaces);
+          _displayedPlaces.addAll(newPlaces.take(5).toList());
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load more places: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        setState(() => _isLoadingMore = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      backgroundColor: EvacuationColors.backgroundColor,
-      drawer: const SideNavigation(userName: 'abc'), // Add the drawer here
-      body: Stack(
-        children: [
-          SafeArea(
+    return Stack(
+      children: [
+        AppScaffold(
+          title: "Safety & Evacuation",  // Add this custom title
+          locationName: _locationPermissionDenied ? "Location access denied" : 
+                     _currentPosition == null ? "Finding location..." : _locationName,
+          backgroundColor: EvacuationColors.backgroundColor,
+          drawer: const SideNavigation(userName: 'abc'),
+          body: RefreshIndicator(
+            onRefresh: _fetchNearbyPlaces,
+            color: EvacuationColors.primaryColor,
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(
-                  child: Builder(  // Wrap with Builder to get correct context
-                    builder: (BuildContext context) => HeaderComponent(
-                      onMenuPressed: () {
-                        Scaffold.of(context).openDrawer();
-                      },
-                    ),
-                  ),
-                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -168,6 +261,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                                         },
                                       ),
                                     ),
+                          // Map controls remain the same
                           Positioned(
                             right: 16,
                             bottom: 16,
@@ -255,23 +349,74 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
               ],
             ),
           ),
-          const ChatAssistance(),
-        ],
+        ),
+        
+        // Add the ChatAssistance as a positioned widget
+        const Positioned(
+          right: 16,
+          bottom: 16,
+          child: ChatAssistance(),
+        ),
+      ],
+    );
+  }
+
+ Widget _buildPlacesList() {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      sliver: _displayedPlaces.isEmpty
+          ? SliverFillRemaining(child: _isLoading ? _buildLoadingIndicator() : _buildEmptyState())
+          : SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  // Show places
+                  if (index < _displayedPlaces.length) {
+                    return _buildRouteCard(_displayedPlaces[index]);
+                  }
+                  
+                  // Show loading indicator or load more button
+                  if (_isLoadingMore) {
+                    return _buildLoadingMoreIndicator();
+                  } else if (_displayedPlaces.length < _allPlaces.length || _nextPageToken != null) {
+                    return _buildLoadMoreButton();
+                  }
+                  
+                  return null;
+                },
+                childCount: _displayedPlaces.length + 
+                  ((_displayedPlaces.length < _allPlaces.length || _nextPageToken != null) ? 1 : 0),
+              ),
+            ),
+    );
+  }
+   Widget _buildLoadMoreButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      alignment: Alignment.center,
+      child: ElevatedButton.icon(
+        onPressed: _loadMorePlaces,
+        icon: const Icon(Icons.refresh),
+        label: const Text("Load More Places"),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: EvacuationColors.primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildPlacesList() {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      sliver: _places.isEmpty
-          ? SliverFillRemaining(child: _buildEmptyState())
-          : SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildRouteCard(_places[index]),
-                childCount: _places.length,
-              ),
-            ),
+    Widget _buildLoadingMoreIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(EvacuationColors.primaryColor),
+        strokeWidth: 3,
+      ),
     );
   }
 
@@ -406,51 +551,69 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     );
   }
 
-  Widget _buildRouteCard(EvacuationPlace place) {
+    Widget _buildRouteCard(EvacuationPlace place) {
     IconData placeIcon = _selectedPlaceType.icon;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 16),
       child: Material(
         color: EvacuationColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
-        elevation: 2,
+        borderRadius: BorderRadius.circular(24),
+        elevation: 3,
+        shadowColor: EvacuationColors.shadowColor.withOpacity(0.3),
         child: InkWell(
           onTap: () => _showRouteToPlace(place),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: EvacuationColors.borderColor,
-                width: 1,
+                color: EvacuationColors.borderColor.withOpacity(0.7),
+                width: 1.5,
+              ),
+              gradient: LinearGradient(
+                colors: [
+                  EvacuationColors.cardBackground,
+                  EvacuationColors.cardBackground.withOpacity(0.95),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        EvacuationColors.primaryColor.withOpacity(0.1),
-                        EvacuationColors.accentColor.withOpacity(0.1),
+                        EvacuationColors.primaryColor.withOpacity(0.2),
+                        EvacuationColors.accentColor.withOpacity(0.2),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EvacuationColors.primaryColor.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Icon(
                     placeIcon,
                     color: EvacuationColors.primaryColor,
-                    size: 24,
+                    size: isSmallScreen ? 18 : 22,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 8 : 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,47 +622,58 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
                         place.name,
                         style: GoogleFonts.inter(
                           color: EvacuationColors.textColor,
-                          fontSize: 16,
+                          fontSize: isSmallScreen ? 13 : 15,
                           fontWeight: FontWeight.w600,
-                          height: 1.3,
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 4 : 8),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: isSmallScreen ? 4 : 6,
+                        runSpacing: isSmallScreen ? 4 : 6,
                         children: [
                           if (place.rating != null)
-                            _buildInfoChip(
+                            _buildCompactInfoChip(
                               icon: Icons.star_rounded,
                               text: place.rating!.toString(),
                               color: const Color(0xFFFB923C),
+                              isSmallScreen: isSmallScreen,
+                              maxWidth: screenWidth * (isSmallScreen ? 0.15 : 0.2),
                             ),
-                          _buildInfoChip(
+                          _buildCompactInfoChip(
                             icon: Icons.location_on_rounded,
                             text: place.vicinity,
                             color: EvacuationColors.primaryColor,
+                            isSmallScreen: isSmallScreen,
+                            maxWidth: screenWidth * (isSmallScreen ? 0.35 : 0.45),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: isSmallScreen ? 4 : 8),
                 Hero(
                   tag: 'arrow_${place.placeId}',
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                     decoration: BoxDecoration(
-                      color: EvacuationColors.primaryColor.withOpacity(0.1),
+                      color: EvacuationColors.primaryColor.withOpacity(0.15),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: EvacuationColors.primaryColor.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Icon(
                       Icons.arrow_forward_ios_rounded,
                       color: EvacuationColors.primaryColor,
-                      size: 16,
+                      size: isSmallScreen ? 10 : 14,
                     ),
                   ),
                 ),
@@ -510,7 +684,53 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
       ),
     );
   }
-
+  // More compact info chip for all screen sizes
+  Widget _buildCompactInfoChip({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required bool isSmallScreen,
+    required double maxWidth,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 6 : 8, 
+        vertical: isSmallScreen ? 3 : 4
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: isSmallScreen ? 10 : 14,
+          ),
+          SizedBox(width: isSmallScreen ? 3 : 4),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                color: EvacuationColors.textColor,
+                fontSize: isSmallScreen ? 10 : 12,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _buildLoadingIndicator() {
     return const Center(
       child: CircularProgressIndicator(color: Colors.white),

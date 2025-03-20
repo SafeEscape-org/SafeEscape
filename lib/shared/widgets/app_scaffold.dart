@@ -5,52 +5,51 @@ import 'package:disaster_management/features/disaster_alerts/widgets/headerCompo
 class AppScaffold extends StatelessWidget {
   final Widget body;
   final String locationName;
-  final bool showDrawer;
-  final Widget? drawer;
   final Color backgroundColor;
-  
+  final Widget? drawer;
+  final String title;
+
   const AppScaffold({
     Key? key,
     required this.body,
-    this.locationName = "Mumbai, India",
-    this.showDrawer = true,
+    required this.locationName,
+    required this.backgroundColor,
     this.drawer,
-    this.backgroundColor = Colors.black,
+    this.title = "Disaster Alerts",
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Set status bar to transparent
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-    
     return Scaffold(
       backgroundColor: backgroundColor,
-      drawer: showDrawer ? drawer : null,
-      body: SafeArea(
-        child: Column(
+      drawer: drawer,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Fixed Header
-            Builder(
-              builder: (BuildContext context) => HeaderComponent(
-                locationName: locationName,
-                onMenuPressed: showDrawer ? () {
-                  Scaffold.of(context).openDrawer();
-                } : () {}, // Provide an empty function instead of null
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                letterSpacing: 0.5,
               ),
             ),
-            
-            // Page Content
-            Expanded(
-              child: body,
+            Text(
+              locationName,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
             ),
           ],
         ),
+        // Rest of your AppBar configuration
       ),
+      body: body,
     );
   }
 }

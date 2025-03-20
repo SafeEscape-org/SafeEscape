@@ -1,0 +1,16 @@
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icon/ic_launcher.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#121212"
+  adaptive_icon_foreground: "assets/icon/ic_launcher_foreground.png"
+  web:
+    generate: true
+    image_path: "assets/icon/ic_launcher.png"
+    background_color: "#121212"
+    theme_color: "#121212"
+  windows:
+    generate: true
+    image_path: "assets/icon/ic_launcher.png"
+    icon_size: 48
