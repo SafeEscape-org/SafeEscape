@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:disaster_management/core/constants/api_constants.dart';
 
 class CurrentWeatherCard extends StatefulWidget {
   final String city;
@@ -18,33 +17,15 @@ class CurrentWeatherCard extends StatefulWidget {
   State<CurrentWeatherCard> createState() => _CurrentWeatherCardState();
 }
 
-class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTickerProviderStateMixin {
+class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
   Map<String, dynamic>? _weatherData;
   bool _isLoading = true;
   String _errorMessage = '';
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
     _fetchWeatherData();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   Future<void> _fetchWeatherData() async {
@@ -54,21 +35,28 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('http://:5000/api/alerts/weather/${widget.city}'),
-      );
+      final cityLowerCase = widget.city.toLowerCase().trim();
+      final url = '${ApiConstants.weatherApiBaseUrl}/$cityLowerCase';
+      
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        if (jsonData['success'] == true && jsonData['data'] != null) {
+        
+        // Handle direct weather data or wrapped data
+        if (jsonData.containsKey('weather') && jsonData.containsKey('main')) {
+          setState(() {
+            _weatherData = jsonData;
+            _isLoading = false;
+          });
+        } else if (jsonData['success'] == true && jsonData['data'] != null) {
           setState(() {
             _weatherData = jsonData['data'];
             _isLoading = false;
           });
-          _animationController.forward();
         } else {
           setState(() {
-            _errorMessage = jsonData['message'] ?? 'Failed to load weather data';
+            _errorMessage = jsonData['message'] ?? 'Failed to parse weather data';
             _isLoading = false;
           });
         }
@@ -83,25 +71,6 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
         _errorMessage = 'Network error: ${e.toString()}';
         _isLoading = false;
       });
-    }
-  }
-
-  String _getWeatherAnimation(String condition) {
-    condition = condition.toLowerCase();
-    if (condition.contains('rain') || condition.contains('drizzle')) {
-      return 'assets/animations/flood_alert.json';
-    } else if (condition.contains('thunder') || condition.contains('storm')) {
-      return 'assets/animations/earthquake_alert.json';
-    } else if (condition.contains('snow')) {
-      return 'assets/animations/general_alert.json';
-    } else if (condition.contains('clear')) {
-      return 'assets/animations/fire_alert.json';
-    } else if (condition.contains('cloud')) {
-      return 'assets/animations/general_alert.json';
-    } else if (condition.contains('fog') || condition.contains('mist')) {
-      return 'assets/animations/general_alert.json';
-    } else {
-      return 'assets/animations/general_alert.json';
     }
   }
 
@@ -124,16 +93,13 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: _isLoading
           ? _buildLoadingState()
           : _errorMessage.isNotEmpty
               ? _buildErrorState()
-              : _buildWeatherCard(isSmallScreen),
+              : _buildWeatherCard(),
     );
   }
 
@@ -141,24 +107,17 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
     return Container(
       height: 180,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF42A5F5),
-            const Color(0xFF64B5F6),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.blue[300],
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Center(
+      child: const Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
@@ -171,12 +130,12 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
       height: 180,
       decoration: BoxDecoration(
         color: Colors.blue[800],
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -184,7 +143,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline,
               color: Colors.white,
               size: 40,
@@ -215,7 +174,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
     );
   }
 
-  Widget _buildWeatherCard(bool isSmallScreen) {
+  Widget _buildWeatherCard() {
     final condition = _weatherData?['weather']?[0]?['main'] ?? 'Unknown';
     final description = _weatherData?['weather']?[0]?['description'] ?? 'Unknown weather';
     final temp = (_weatherData?['main']?['temp'] ?? 0).toDouble();
@@ -227,241 +186,177 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
     
     // Format date
     final now = DateTime.now();
-    final dateFormat = DateFormat('EEEE, MMM d');
-    final timeFormat = DateFormat('h:mm a');
-    final formattedDate = dateFormat.format(now);
-    final formattedTime = timeFormat.format(now);
+    final formattedDate = DateFormat('EEEE, MMM d').format(now);
+    final formattedTime = DateFormat('h:mm a').format(now);
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _getBackgroundColor(condition),
-              _getBackgroundColor(condition).withOpacity(0.8),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _getBackgroundColor(condition),
+            _getBackgroundColor(condition).withOpacity(0.7),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              // Background pattern - use a subtle pattern or remove if not available
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.05,
-                  child: Container(
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Location and date
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Location and date
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      '$cityName, $country',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: isSmallScreen ? 16 : 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                formattedDate,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: isSmallScreen ? 12 : 14,
-                                ),
-                              ),
-                              Text(
-                                formattedTime,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: isSmallScreen ? 12 : 14,
-                                ),
-                              ),
-                            ],
-                          ),
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 16,
                         ),
-                        
-                        // Weather animation
-                        SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: Image.asset(
-                            'assets/icons/weather/${condition.toLowerCase()}.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.cloud,
-                                color: Colors.white,
-                                size: 50,
-                              );
-                            },
+                        const SizedBox(width: 4),
+                        Text(
+                          '$cityName, $country',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Temperature and description
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${temp.round()}',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: isSmallScreen ? 40 : 48,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '°C',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: isSmallScreen ? 20 : 24,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              'Feels like ${feelsLike.round()}°C',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: isSmallScreen ? 12 : 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              condition,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: isSmallScreen ? 18 : 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              description,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: isSmallScreen ? 12 : 14,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Additional info
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildWeatherInfoItem(
-                            icon: Icons.water_drop_outlined,
-                            value: '$humidity%',
-                            label: 'Humidity',
-                            isSmallScreen: isSmallScreen,
-                          ),
-                          _buildWeatherInfoItem(
-                            icon: Icons.air,
-                            value: '${windSpeed.toStringAsFixed(1)} m/s',
-                            label: 'Wind',
-                            isSmallScreen: isSmallScreen,
-                          ),
-                        ],
+                    Text(
+                      '$formattedDate • $formattedTime',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
+                
+                // Weather icon
+                Icon(
+                  _getWeatherIcon(condition),
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Temperature and description
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${temp.round()}',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '°C',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Feels like ${feelsLike.round()}°C',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      condition,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      description,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Additional info
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildInfoItem(Icons.water_drop_outlined, '$humidity%', 'Humidity'),
+                  _buildInfoItem(Icons.air, '${windSpeed.toStringAsFixed(1)} m/s', 'Wind'),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildWeatherInfoItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    required bool isSmallScreen,
-  }) {
+  Widget _buildInfoItem(IconData icon, String value, String label) {
     return Column(
       children: [
         Icon(
           icon,
           color: Colors.white,
-          size: isSmallScreen ? 18 : 22,
+          size: 20,
         ),
         const SizedBox(height: 4),
         Text(
           value,
           style: GoogleFonts.poppins(
             color: Colors.white,
-            fontSize: isSmallScreen ? 14 : 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -469,10 +364,29 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> with SingleTick
           label,
           style: GoogleFonts.poppins(
             color: Colors.white.withOpacity(0.9),
-            fontSize: isSmallScreen ? 12 : 14,
+            fontSize: 12,
           ),
         ),
       ],
     );
+  }
+
+  IconData _getWeatherIcon(String condition) {
+    condition = condition.toLowerCase();
+    if (condition.contains('rain') || condition.contains('drizzle')) {
+      return Icons.water_drop;
+    } else if (condition.contains('thunder') || condition.contains('storm')) {
+      return Icons.flash_on;
+    } else if (condition.contains('snow')) {
+      return Icons.ac_unit;
+    } else if (condition.contains('clear')) {
+      return Icons.wb_sunny;
+    } else if (condition.contains('cloud')) {
+      return Icons.cloud;
+    } else if (condition.contains('fog') || condition.contains('mist')) {
+      return Icons.cloud;
+    } else {
+      return Icons.cloud;
+    }
   }
 }

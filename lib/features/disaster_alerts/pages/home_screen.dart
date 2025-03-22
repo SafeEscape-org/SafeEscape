@@ -5,10 +5,12 @@ import 'package:disaster_management/features/disaster_alerts/widgets/current_wea
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/recent_earthquakes_card.dart';
 import 'package:disaster_management/services/location_service.dart';
+import 'package:disaster_management/services/notification_service.dart';
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
+import 'package:disaster_management/shared/widgets/chat_overlay.dart';
 
 class CombinedHomeWeatherComponent extends StatefulWidget {
   const CombinedHomeWeatherComponent({super.key});
@@ -21,15 +23,39 @@ class CombinedHomeWeatherComponent extends StatefulWidget {
 
 class _CombinedHomeWeatherComponentState
     extends State<CombinedHomeWeatherComponent> with WidgetsBindingObserver {
-  bool _isLoading = false;  // Changed from true to false
-  String _locationName = "Mumbai, India";  // Changed from "Loading..." to default location
+  bool _isLoading = false;
+  String _locationName = "Mumbai, India";
   Map<String, dynamic>? _locationData;
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _fetchLocationData();
+    
+    // Register this screen as the active notification screen
+    _notificationService.setActiveScreen(true);
+  }
+
+  @override
+  void dispose() {
+    // Unregister this screen when it's disposed
+    _notificationService.setActiveScreen(false);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchLocationData();
+      // Re-register as active when app is resumed
+      _notificationService.setActiveScreen(true);
+    } else if (state == AppLifecycleState.paused) {
+      // Unregister when app is paused
+      _notificationService.setActiveScreen(false);
+    }
   }
 
   Future<void> _fetchLocationData() async {
@@ -77,18 +103,9 @@ class _CombinedHomeWeatherComponentState
     }
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _fetchLocationData();
-    }
-  }
+
+
 
 
   @override
