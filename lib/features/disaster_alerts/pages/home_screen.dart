@@ -11,6 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:disaster_management/shared/widgets/chat_overlay.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:disaster_management/core/constants/api_constants.dart';
 
 class CombinedHomeWeatherComponent extends StatefulWidget {
   const CombinedHomeWeatherComponent({super.key});
@@ -24,8 +28,10 @@ class CombinedHomeWeatherComponent extends StatefulWidget {
 class _CombinedHomeWeatherComponentState
     extends State<CombinedHomeWeatherComponent> with WidgetsBindingObserver {
   bool _isLoading = false;
+  bool _isLoadingDisasters = false;
   String _locationName = "Mumbai, India";
   Map<String, dynamic>? _locationData;
+  List<Map<String, dynamic>> _activeDisasters = [];
   final NotificationService _notificationService = NotificationService();
 
   @override
@@ -68,7 +74,7 @@ class _CombinedHomeWeatherComponentState
       final location = await LocationService.getCurrentLocation(context);
       
       if (location != null) {
-        final address = await LocationService.getAddressFromCoordinates(  // Removed underscore
+        final address = await LocationService.getAddressFromCoordinates(
           location['latitude'], 
           location['longitude']
         );
@@ -82,14 +88,22 @@ class _CombinedHomeWeatherComponentState
           };
           _isLoading = false;
         });
+        
+        // Fetch disaster data after location is determined
+        _fetchDisasterData();
       } else {
         setState(() {
           _locationName = "Mumbai, India";
           _locationData = {
             'city': "Mumbai",
+            'latitude': 19.0760,
+            'longitude': 72.8777,
           };
           _isLoading = false;
         });
+        
+        // Fetch disaster data with default location
+        _fetchDisasterData();
       }
     } catch (e) {
       debugPrint('Error fetching location: $e');
@@ -97,8 +111,73 @@ class _CombinedHomeWeatherComponentState
         _locationName = "Mumbai, India";
         _locationData = {
           'city': "Mumbai",
+          'latitude': 19.0760,
+          'longitude': 72.8777,
         };
         _isLoading = false;
+      });
+      
+      // Fetch disaster data with default location
+      _fetchDisasterData();
+    }
+  }
+
+  // Add method to fetch disaster data
+  Future<void> _fetchDisasterData() async {
+    if (_locationData == null) return;
+    
+    setState(() {
+      _isLoadingDisasters = true;
+    });
+    
+    try {
+      // Get current user ID from Firebase
+      String userId = "user123"; // Default fallback
+      try {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          userId = currentUser.uid;
+        }
+      } catch (e) {
+        debugPrint('Error getting Firebase user: $e');
+      }
+      
+      final response = await http.post(
+        Uri.parse(ApiConstants.disasterAlertsApiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "userId": userId,
+          "location": {
+            "latitude": _locationData?['latitude'] ?? 19.0760,
+            "longitude": _locationData?['longitude'] ?? 72.8777
+          }
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['disasters'] != null) {
+          setState(() {
+            _activeDisasters = List<Map<String, dynamic>>.from(data['disasters']);
+            _isLoadingDisasters = false;
+          });
+        } else {
+          setState(() {
+            _activeDisasters = [];
+            _isLoadingDisasters = false;
+          });
+        }
+      } else {
+        setState(() {
+          _activeDisasters = [];
+          _isLoadingDisasters = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching disaster data: $e');
+      setState(() {
+        _activeDisasters = [];
+        _isLoadingDisasters = false;
       });
     }
   }
@@ -139,109 +218,46 @@ class _CombinedHomeWeatherComponentState
           // Current Weather Section
           _buildSectionTitle('Current Weather'),
           _isLoading 
-            ? _buildShimmerLoading(height: 180)
+            ? _buildSimpleLoading(height: 180)
             : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
           
           const SizedBox(height: 24),
           
           // Active Alerts Section
           _buildSectionTitle('Active Alerts'),
-          _isLoading 
+          _isLoading || _isLoadingDisasters
             ? Column(
                 children: [
-                  _buildShimmerLoading(height: 120),
+                  _buildSimpleLoading(height: 120),
                   const SizedBox(height: 12),
-                  _buildShimmerLoading(height: 120),
+                  _buildSimpleLoading(height: 120),
                 ],
               )
-            : Column(
-                children: const [
-                  AlertCard(
-                    title: 'Flood Warning',
-                    description: 'Flash flood warning in effect until 8:00 PM',
-                    severity: 'Severe',
-                    time: '2 hours ago',
-                    alertType: 'flood',
-                    color: Colors.blue,
-                  ),
-                  SizedBox(height: 12),
-                  AlertCard(
-                    title: 'Heat Advisory',
-                    description: 'Excessive heat warning until tomorrow evening',
-                    severity: 'Moderate',
-                    time: '5 hours ago',
-                    alertType: 'fire',
-                    color: Colors.orange,
-                  ),
-                ],
-              ),
+            : _buildActiveAlerts(),
+          
           const SizedBox(height: 24),
           
           // Recent Earthquakes Section
           _buildSectionTitle('Recent Earthquakes'),
           _isLoading 
-            ? _buildShimmerLoading(height: 200)
+            ? _buildSimpleLoading(height: 200)
             : const RecentEarthquakesCard(),
           
           const SizedBox(height: 24),
           
           // Disaster Declarations Section
           _buildSectionTitle('Disaster Declarations'),
-          _isLoading 
+          _isLoading || _isLoadingDisasters
             ? Column(
                 children: [
-                  _buildShimmerLoading(height: 100),
+                  _buildSimpleLoading(height: 100),
                   const SizedBox(height: 12),
-                  _buildShimmerLoading(height: 100),
+                  _buildSimpleLoading(height: 100),
                   const SizedBox(height: 12),
-                  _buildShimmerLoading(height: 100),
+                  _buildSimpleLoading(height: 100),
                 ],
               )
-            : Column(
-                children: const [
-                  DisasterDeclarationCard(
-                    title: 'Severe Storms and Flooding',
-                    type: 'Flood',
-                    location: 'Los Angeles County, CA',
-                    date: '2023-05-15',
-                    status: 'Active',
-                  ),
-                  SizedBox(height: 12),
-                  DisasterDeclarationCard(
-                    title: 'Hurricane Ian',
-                    type: 'Hurricane',
-                    location: 'Miami-Dade County, FL',
-                    date: '2023-04-22',
-                    status: 'Active',
-                  ),
-                  SizedBox(height: 12),
-                  DisasterDeclarationCard(
-                    title: 'Wildfire',
-                    type: 'Fire',
-                    location: 'San Diego County, CA',
-                    date: '2023-03-10',
-                    status: 'Closed',
-                  ),
-                  AlertCard(
-                    title: 'Earthquake Alert',
-                    description: 'Magnitude 4.2 earthquake detected nearby',
-                    severity: 'High',
-                    time: '10 minutes ago',
-                    alertType: 'earthquake',
-                    color: Colors.red,
-                  ),
-                  SizedBox(height: 12),
-                  AlertCard(
-                    title: 'Storm Warning',
-                    description: 'Severe thunderstorm approaching the area',
-                    severity: 'Severe',
-                    time: '1 hour ago',
-                    alertType: 'storm',
-                    color: Colors.purple,
-                  ),
-                ],
-              ),
-          const SizedBox(height: 24),
+            : _buildDisasterDeclarations(),
           
           // Add some padding at the bottom
           const SizedBox(height: 100),
@@ -250,8 +266,186 @@ class _CombinedHomeWeatherComponentState
     );
   }
   
+  // Add method to build active alerts from API data
+  Widget _buildActiveAlerts() {
+    if (_activeDisasters.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text(
+            'No active alerts for your area',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Filter high severity disasters for alerts
+    final highSeverityDisasters = _activeDisasters
+        .where((disaster) => 
+            disaster['severity'] == 'high' || 
+            disaster['severity'] == 'severe' ||
+            disaster['severity'] == 'medium')
+        .take(3)
+        .toList();
+    
+    if (highSeverityDisasters.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text(
+            'No high severity alerts for your area',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return Column(
+      children: highSeverityDisasters.map((disaster) {
+        final Color alertColor = _getAlertColor(disaster['type']);
+        final String timeAgo = _getTimeAgo(disaster['timestamp']);
+        
+        // Truncate description to keep card size consistent
+        String description = disaster['description'] ?? '';
+        if (description.length > 100) {
+          description = description.substring(0, 100) + '...';
+        }
+        
+        return AlertCard(
+          title: disaster['title'],
+          description: description,
+          severity: _capitalizeSeverity(disaster['severity']),
+          time: timeAgo,
+          alertType: disaster['type'],
+          color: alertColor,
+        );
+      }).toList(),
+    );
+  }
+  
+  // Add method to build disaster declarations from API data
+  Widget _buildDisasterDeclarations() {
+    if (_activeDisasters.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text(
+            'No disaster declarations for your area',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return Column(
+      children: _activeDisasters.map((disaster) {
+        final String formattedDate = _formatDate(disaster['timestamp']);
+        final String disasterType = disaster['type'] ?? 'Unknown';
+        
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: DisasterDeclarationCard(
+            title: disaster['title'] ?? 'Unknown Disaster',
+            type: _capitalizeFirstLetter(disasterType),
+            location: '${disaster['location']['city'] ?? 'Unknown'}, ${disaster['location']['state'] ?? ''}',
+            date: formattedDate,
+            status: disaster['active'] == true ? 'Active' : 'Closed',
+          ),
+        );
+      }).toList(),
+    );
+  }
+  
+  // Helper method to get alert color based on type
+  Color _getAlertColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'flood':
+        return Colors.blue;
+      case 'fire':
+        return Colors.orange;
+      case 'earthquake':
+        return Colors.red;
+      case 'storm':
+        return Colors.purple;
+      case 'pollution':
+        return Colors.brown;
+      case 'hurricane':
+        return Colors.indigo;
+      default:
+        return Colors.teal;
+    }
+  }
+  
+  // Helper method to format timestamp to relative time
+  String _getTimeAgo(String timestamp) {
+    final DateTime now = DateTime.now();
+    final DateTime date = DateTime.parse(timestamp);
+    final Duration difference = now.difference(date);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+    } else {
+      return 'Just now';
+    }
+  }
+  
+  // Helper method to format date
+  String _formatDate(String timestamp) {
+    final DateTime date = DateTime.parse(timestamp);
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+  
+  // Helper method to capitalize first letter
+  String _capitalizeFirstLetter(String text) {
+    if (text.isEmpty) return '';
+    return text[0].toUpperCase() + text.substring(1);
+  }
+  
+  // Helper method to capitalize severity
+  String _capitalizeSeverity(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'high':
+        return 'High';
+      case 'medium':
+        return 'Moderate';
+      case 'low':
+        return 'Low';
+      case 'severe':
+        return 'Severe';
+      default:
+        return _capitalizeFirstLetter(severity);
+    }
+  }
+  
   // Add this new shimmer loading widget
-  Widget _buildShimmerLoading({required double height}) {
+  // Replace the shimmer loading widget with a simpler loading indicator
+  Widget _buildSimpleLoading({required double height}) {
     return Container(
       height: height,
       width: double.infinity,
@@ -267,38 +461,9 @@ class _CombinedHomeWeatherComponentState
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Container(
-              width: double.infinity,
-              height: height,
-              color: Colors.blue[50],
-            ),
-            Positioned.fill(
-              child: ShaderMask(
-                shaderCallback: (Rect bounds) {
-                  return LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.transparent,
-                      Colors.blue[100]!,
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ).createShader(bounds);
-                },
-                blendMode: BlendMode.srcATop,
-                child: Container(
-                  width: double.infinity,
-                  height: height,
-                  color: Colors.blue[50],
-                ),
-              ),
-            ),
-          ],
+      child: Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
         ),
       ),
     );
