@@ -1,11 +1,13 @@
 class ChatMessage {
-  final String message;
+  final String text;
   final bool isUser;
   final DateTime timestamp;
+  final bool isError;
 
-  ChatMessage({
-    required this.message,
+  const ChatMessage({
+    required this.text,
     required this.isUser,
-    DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
+    required this.timestamp,
+    this.isError = false,
+  });
 }
