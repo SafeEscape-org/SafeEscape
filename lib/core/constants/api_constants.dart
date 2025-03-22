@@ -28,6 +28,9 @@ class ApiConstants {
   // Weather API - Update to match the correct endpoint
   static String get weatherApiBaseUrl => 'http://$socketServerIP:$socketServerPort/api/alerts/weather';
   
+  // Disaster Alerts API
+  static String get disasterAlertsApiUrl => 'http://$socketServerIP:$socketServerPort/api/disasters/active';
+  
   // Gemini Chat API
   static String get geminiChatApiUrl => 'http://$socketServerIP:$socketServerPort';
   
