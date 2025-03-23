@@ -1,6 +1,6 @@
 class ApiConstants {
   // Google Maps API
-  static const String googleApiKey = 'AIzaSyC6WTuzd0PFEsipwzUXyJYvmzFodpZIhNA';
+  static const String googleApiKey = 'AIzaSyCKiAUtSDYgRhtelG0tVsAXSvcAMJoA78I';
   static const String nearbyPlacesBaseUrl =
       'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
   static const int searchRadius = 5000; // in meters
