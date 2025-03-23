@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:disaster_management/core/constants/api_constants.dart';
+import 'package:disaster_management/services/disaster_service.dart';
 
 class CombinedHomeWeatherComponent extends StatefulWidget {
   const CombinedHomeWeatherComponent({super.key});
@@ -63,6 +64,9 @@ class _CombinedHomeWeatherComponentState
       _notificationService.setActiveScreen(false);
     }
   }
+
+  // Add the DisasterService field at the class level
+  final DisasterService _disasterService = DisasterService();
 
   Future<void> _fetchLocationData() async {
     setState(() {
@@ -118,11 +122,11 @@ class _CombinedHomeWeatherComponentState
       });
       
       // Fetch disaster data with default location
-      _fetchDisasterData();
+      await _fetchDisasterData();
     }
   }
-
-  // Add method to fetch disaster data
+  
+  // Optimized method to fetch disaster data
   Future<void> _fetchDisasterData() async {
     if (_locationData == null) return;
     
@@ -131,61 +135,26 @@ class _CombinedHomeWeatherComponentState
     });
     
     try {
-      // Get current user ID from Firebase
-      String userId = "user123"; // Default fallback
-      try {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          userId = currentUser.uid;
-        }
-      } catch (e) {
-        debugPrint('Error getting Firebase user: $e');
+      // Use the service to fetch data
+      final disasters = await _disasterService.fetchDisasterData(_locationData);
+      
+      // Only update state if widget is still mounted
+      if (mounted) {
+        setState(() {
+          _activeDisasters = disasters;
+          _isLoadingDisasters = false;
+        });
       }
-      
-      final response = await http.post(
-        Uri.parse(ApiConstants.disasterAlertsApiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          "userId": userId,
-          "location": {
-            "latitude": _locationData?['latitude'] ?? 19.0760,
-            "longitude": _locationData?['longitude'] ?? 72.8777
-          }
-        }),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['disasters'] != null) {
-          setState(() {
-            _activeDisasters = List<Map<String, dynamic>>.from(data['disasters']);
-            _isLoadingDisasters = false;
-          });
-        } else {
-          setState(() {
-            _activeDisasters = [];
-            _isLoadingDisasters = false;
-          });
-        }
-      } else {
+    } catch (e) {
+      debugPrint('Error in _fetchDisasterData: $e');
+      if (mounted) {
         setState(() {
           _activeDisasters = [];
           _isLoadingDisasters = false;
         });
       }
-    } catch (e) {
-      debugPrint('Error fetching disaster data: $e');
-      setState(() {
-        _activeDisasters = [];
-        _isLoadingDisasters = false;
-      });
     }
   }
-
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -359,22 +328,66 @@ class _CombinedHomeWeatherComponentState
       );
     }
     
+    // Limit to only 5 disaster declarations to improve performance
+    final displayedDisasters = _activeDisasters.take(5).toList();
+    final hasMoreDisasters = _activeDisasters.length > 5;
+    
     return Column(
-      children: _activeDisasters.map((disaster) {
-        final String formattedDate = _formatDate(disaster['timestamp']);
-        final String disasterType = disaster['type'] ?? 'Unknown';
+      children: [
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: displayedDisasters.length,
+          itemBuilder: (context, index) {
+            final disaster = displayedDisasters[index];
+            final String formattedDate = _formatDate(disaster['timestamp']);
+            final String disasterType = disaster['type'] ?? 'Unknown';
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DisasterDeclarationCard(
+                title: disaster['title'] ?? 'Unknown Disaster',
+                type: _capitalizeFirstLetter(disasterType),
+                location: '${disaster['location']['city'] ?? 'Unknown'}, ${disaster['location']['state'] ?? ''}',
+                date: formattedDate,
+                status: disaster['active'] == true ? 'Active' : 'Closed',
+              ),
+            );
+          },
+        ),
         
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: DisasterDeclarationCard(
-            title: disaster['title'] ?? 'Unknown Disaster',
-            type: _capitalizeFirstLetter(disasterType),
-            location: '${disaster['location']['city'] ?? 'Unknown'}, ${disaster['location']['state'] ?? ''}',
-            date: formattedDate,
-            status: disaster['active'] == true ? 'Active' : 'Closed',
+        if (hasMoreDisasters)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: InkWell(
+              onTap: () {
+                // Navigate to a dedicated screen for all disaster declarations
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    'View More',
+                    style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
   

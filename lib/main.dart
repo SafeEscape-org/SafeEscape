@@ -31,47 +31,29 @@ Future<T> runHeavyTask<T>(Future<T> Function() task) {
 }
 
 void main() async {
+  // Initialize Flutter binding first
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  
-  // Simplified frame timing detection
-  WidgetsBinding.instance.addTimingsCallback((List<FrameTiming> timings) {
-    // Only check the most recent frame to reduce overhead
-    if (timings.isNotEmpty) {
-      final timing = timings.last;
-      final buildMs = timing.buildDuration.inMilliseconds;
-      final rasterMs = timing.rasterDuration.inMilliseconds;
-      
-      // Log only significantly slow frames (>25ms)
-      if (buildMs > 25 || rasterMs > 25) {
-        debugPrint('⚠️ Slow frame: build=${buildMs}ms, raster=${rasterMs}ms');
-      }
-    }
-  });
   
   // Preserve splash screen while initializing
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
+  // Optimize rendering performance
+  // Disable frame reporting to reduce "updateAcquireFence" errors
+  debugPrintBeginFrameBanner = false;
+  debugPrintEndFrameBanner = false;
+  
+  // Initialize Firebase first before creating socket service
   try {
-    // Run Firebase initialization in parallel
-    final firebaseInit = FirebaseConfig.initializeFirebase();
-    final fcmInit = FCMConfig.initializeFCM();
-    
-    // Wait for both to complete
-    await Future.wait([firebaseInit, fcmInit]);
+    await FirebaseConfig.initializeFirebase();
+    debugPrint('✅ Firebase initialized successfully');
   } catch (e) {
-    debugPrint('Initialization error: $e');
+    debugPrint('⚠️ Firebase initialization error: $e');
   }
   
   // Create service instance once to avoid multiple instances
   final socketService = SocketService();
   
-  // Reduce memory pressure before launching app
-  await runHeavyTask(() async {
-    // Force a garbage collection if possible
-    await Future.delayed(const Duration(milliseconds: 50));
-    return;
-  });
-  
+  // Start the app immediately
   runApp(
     MultiProvider(
       providers: [
@@ -83,9 +65,20 @@ void main() async {
     ),
   );
   
-  // Remove splash screen after a short delay to ensure UI is ready
-  Future.delayed(const Duration(milliseconds: 300), () {
-    FlutterNativeSplash.remove();
+  // Run remaining initialization tasks in parallel after app has started
+  Future.microtask(() async {
+    try {
+      // Initialize FCM after Firebase is ready
+      await FCMConfig.initializeFCM();
+      debugPrint('✅ FCM initialized successfully');
+    } catch (e) {
+      debugPrint('⚠️ FCM initialization error: $e');
+    } finally {
+      // Remove splash screen after initialization completes
+      // Add a longer delay to ensure UI is fully ready
+      await Future.delayed(const Duration(milliseconds: 800));
+      FlutterNativeSplash.remove();
+    }
   });
 }
 
@@ -202,18 +195,31 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _deferredInitialization() async {
     if (_isInitialized) return;
     
-    // Add a short delay to let the UI settle first
-    await Future.delayed(const Duration(milliseconds: 50));
-    
+    // Don't set state until all initialization is complete
     // Run initialization in microtask to avoid blocking main thread
     await Future.microtask(() async {
-      await _setupUserUpdates();
-      _initializeSocket();
-      
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
+      try {
+        // Perform all initialization before updating state
+        await _setupUserUpdates();
+        
+        // Don't initialize socket here since it's handled in home screen
+        // This prevents duplicate initialization and UI flickers
+        // _initializeSocket();
+        
+        // Only update state once at the end of all initialization
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+          });
+        }
+      } catch (e) {
+        debugPrint('⚠️ Deferred initialization error: $e');
+        // Still mark as initialized even if there's an error
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+          });
+        }
       }
     });
   }
@@ -381,44 +387,47 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Use a more efficient approach to prevent unnecessary rebuilds
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        // Add key to IndexedStack to improve rebuild efficiency
-        key: ValueKey('main_indexed_stack_$currentIndex'),
-        children: [
-          // Use RepaintBoundary to isolate painting operations
-          RepaintBoundary(
-            child: KeyedSubtree(
-              key: _screenKeys[0],
-              child: KeepAliveWrapper(
-                child: CombinedHomeWeatherComponent(),
-              ),
-            ),
-          ),
-          RepaintBoundary(
-            child: KeyedSubtree(
-              key: _screenKeys[1],
-              child: KeepAliveWrapper(
-                child: EmergencyScreen(),
-              ),
-            ),
-          ),
-          RepaintBoundary(
-            child: KeyedSubtree(
-              key: _screenKeys[2],
-              child: KeepAliveWrapper(
-                child: EvacuationScreen(),
-              ),
-            ),
-          ),
-        ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _buildCurrentScreen(),
       ),
       // Wrap the bottom navigation bar in RepaintBoundary
       bottomNavigationBar: RepaintBoundary(
         child: FooterComponent(
           currentIndex: currentIndex,
           onTabSelected: onTabSelected,
+        ),
+      ),
+    );
+  }
+  
+  // Extract screen building to a separate method
+  Widget _buildCurrentScreen() {
+    // Use keys to help Flutter identify which widgets have changed
+    return KeyedSubtree(
+      key: ValueKey('main_screen_$currentIndex'),
+      child: RepaintBoundary(
+        child: IndexedStack(
+          index: 0, // Always show the current screen only
+          children: [
+            if (currentIndex == 0)
+              KeepAliveWrapper(
+                key: _screenKeys[0],
+                child: CombinedHomeWeatherComponent(),
+              )
+            else if (currentIndex == 1)
+              KeepAliveWrapper(
+                key: _screenKeys[1],
+                child: EmergencyScreen(),
+              )
+            else
+              KeepAliveWrapper(
+                key: _screenKeys[2],
+                child: EvacuationScreen(),
+              ),
+          ],
         ),
       ),
     );
