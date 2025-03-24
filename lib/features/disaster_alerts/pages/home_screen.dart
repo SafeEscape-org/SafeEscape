@@ -7,6 +7,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/recent_eart
 import 'package:disaster_management/services/location_service.dart';
 import 'package:disaster_management/services/notification_service.dart';
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
+import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
@@ -158,23 +159,34 @@ class _CombinedHomeWeatherComponentState
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      locationName: _isLoading ? "Loading..." : _locationName,
-      backgroundColor: AppColors.backgroundColor,
-      drawer: const SideNavigation(userName: 'abc'),
-      body: RefreshIndicator(
-        onRefresh: _fetchLocationData,
-        color: AppColors.primaryColor,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Content
-            SliverToBoxAdapter(
-              child: _buildContent(),
+    return Stack(
+      children: [
+        AppScaffold(
+          locationName: _isLoading ? "Loading..." : _locationName,
+          backgroundColor: AppColors.backgroundColor,
+          drawer: const SideNavigation(userName: 'abc'),
+          body: RefreshIndicator(
+            onRefresh: _fetchLocationData,
+            color: AppColors.primaryColor,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // Content
+                SliverToBoxAdapter(
+                  child: _buildContent(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        
+        // Add the ChatAssistance widget
+        const Positioned(
+          right: 16,
+          bottom: 16,
+          child: ChatAssistance(),
+        ),
+      ],
     );
   }
   

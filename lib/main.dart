@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:disaster_management/core/constants/api_constants.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart'; // Add this import
@@ -42,6 +43,11 @@ void main() async {
   debugPrintBeginFrameBanner = false;
   debugPrintEndFrameBanner = false;
   
+  // Add these lines to reduce rendering issues
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+  
   // Initialize Firebase first before creating socket service
   try {
     await FirebaseConfig.initializeFirebase();
@@ -53,14 +59,13 @@ void main() async {
   // Create service instance once to avoid multiple instances
   final socketService = SocketService();
   
-  // Start the app immediately
+  // Remove splash screen before starting the app
+  FlutterNativeSplash.remove();
+  
+  // Start the app with the provider properly wrapped
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(
-          value: socketService,
-        ),
-      ],
+    ChangeNotifierProvider<SocketService>.value(
+      value: socketService,
       child: const MyApp(),
     ),
   );
@@ -73,11 +78,6 @@ void main() async {
       debugPrint('✅ FCM initialized successfully');
     } catch (e) {
       debugPrint('⚠️ FCM initialization error: $e');
-    } finally {
-      // Remove splash screen after initialization completes
-      // Add a longer delay to ensure UI is fully ready
-      await Future.delayed(const Duration(milliseconds: 800));
-      FlutterNativeSplash.remove();
     }
   });
 }
@@ -103,24 +103,20 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/auth',
       routes: {
-        '/auth': (context) => Consumer<SocketService>(
-          builder: (context, socketService, child) {
-            return StreamBuilder<User?>(
-              stream: FirebaseAuth.instance.authStateChanges(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
+        '/auth': (context) => StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-                if (snapshot.hasData) {
-                  return const MainScreen();
-                }
+            if (snapshot.hasData) {
+              return const MainScreen();
+            }
 
-                return const RegistrationPage();
-              },
-            );
+            return const RegistrationPage();
           },
         ),
         '/home': (context) => const MainScreen(),
@@ -151,17 +147,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    
-    // Register for app lifecycle events
-    WidgetsBinding.instance.addObserver(this);
-    
-    // Defer heavy initialization to after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _deferredInitialization();
-    });
-  }
+@override
+void initState() {
+  super.initState();
+  
+  // Register for app lifecycle events
+  WidgetsBinding.instance.addObserver(this);
+  
+  // Initialize socket AFTER the first frame
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _initializeSocket();
+    _deferredInitialization();
+  });
+}
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -234,6 +232,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     // Store reference to avoid context issues during async operations
     final socketService = Provider.of<SocketService>(context, listen: false);
     
+    // Don't store ScaffoldMessenger reference here - it's causing issues
+    // Instead, use a safer approach for showing errors
+    
     // Run socket initialization in a separate isolate or compute
     Future.microtask(() {
       try {
@@ -244,9 +245,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             socketService.registerUser();
           });
           
-          // Add error handling for socket connection
+          // Add error handling for socket connection with better timeout handling
           socketService.socket.on('connect_error', (error) {
             debugPrint('⚠️ Socket connection error: $error');
+            
+            // Don't try to show UI notifications from socket callbacks
+            // They can be called after the widget is disposed
           });
           
           // Add reconnection logic
@@ -255,6 +259,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             socketService.registerUser();
           });
           
+          // Connect with proper error handling and timeout
+          debugPrint('🔌 Connecting to socket server at ${ApiConstants.socketServerUrl}');
           socketService.connectSocket();
         } else {
           // If already connected, just register
@@ -300,6 +306,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (user != null) {
       // Run location update in background with lower priority
       Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return; // Add mounted check before async operation
         _runInBackground(() async {
           try {
             // Initial location update
@@ -312,6 +319,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       // Check and update FCM token if needed - with delay to reduce startup load
       Future.delayed(const Duration(seconds: 5), () {
+        if (!mounted) return; // Add mounted check before async operation
         _runInBackground(() async {
           try {
             bool tokenUpdated = await _authService.checkAndUpdateFCMToken(user.uid);
@@ -341,8 +349,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _locationUpdateTimer = Timer.periodic(
         const Duration(minutes: 45),
         (_) {
-          // Skip updates when app is in background
-          if (!_isInForeground) return;
+          // Skip updates when app is in background or widget is disposed
+          if (!_isInForeground || !mounted) return;
           
           _runInBackground(() async {
             await _authService.updateUserLocation(user.uid, context);
@@ -368,19 +376,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   int currentIndex = 0;
   void onTabSelected(int index) {
-    if (currentIndex == index) return;
+    if (currentIndex == index || !mounted) return;
     
-    // Use microtask to ensure state update happens after the current frame
-    Future.microtask(() {
-      if (mounted) {
-        setState(() {
-          currentIndex = index;
-          
-          // Initialize the screen if it hasn't been initialized yet
-          if (!_initializedScreens[index]!) {
-            _initializedScreens[index] = true;
-          }
-        });
+    setState(() {
+      currentIndex = index;
+      
+      // Initialize the screen if it hasn't been initialized yet
+      if (!_initializedScreens[index]!) {
+        _initializedScreens[index] = true;
       }
     });
   }
@@ -389,9 +392,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     // Use a more efficient approach to prevent unnecessary rebuilds
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildCurrentScreen(),
+      body: RepaintBoundary(
+        child: IndexedStack(
+          index: currentIndex,
+          children: [
+            KeepAliveWrapper(
+              key: _screenKeys[0],
+              child: CombinedHomeWeatherComponent(),
+            ),
+            KeepAliveWrapper(
+              key: _screenKeys[1],
+              child: EmergencyScreen(),
+            ),
+            KeepAliveWrapper(
+              key: _screenKeys[2],
+              child: EvacuationScreen(),
+            ),
+          ],
+        ),
       ),
       // Wrap the bottom navigation bar in RepaintBoundary
       bottomNavigationBar: RepaintBoundary(
@@ -403,35 +421,32 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
   
-  // Extract screen building to a separate method
-  Widget _buildCurrentScreen() {
-    // Use keys to help Flutter identify which widgets have changed
-    return KeyedSubtree(
-      key: ValueKey('main_screen_$currentIndex'),
-      child: RepaintBoundary(
-        child: IndexedStack(
-          index: 0, // Always show the current screen only
-          children: [
-            if (currentIndex == 0)
-              KeepAliveWrapper(
-                key: _screenKeys[0],
-                child: CombinedHomeWeatherComponent(),
-              )
-            else if (currentIndex == 1)
-              KeepAliveWrapper(
-                key: _screenKeys[1],
-                child: EmergencyScreen(),
-              )
-            else
-              KeepAliveWrapper(
-                key: _screenKeys[2],
-                child: EvacuationScreen(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Remove this method as it's causing rendering issues
+  // Widget _buildCurrentScreen() {
+  //   // Use keys to help Flutter identify which widgets have changed
+  //   return KeyedSubtree(
+  //     key: ValueKey('main_screen_$currentIndex'),
+  //     child: RepaintBoundary(
+  //       child: IndexedStack(
+  //         index: currentIndex,
+  //         children: [
+  //           KeepAliveWrapper(
+  //             key: _screenKeys[0],
+  //             child: CombinedHomeWeatherComponent(),
+  //           ),
+  //           KeepAliveWrapper(
+  //             key: _screenKeys[1],
+  //             child: EmergencyScreen(),
+  //           ),
+  //           KeepAliveWrapper(
+  //             key: _screenKeys[2],
+  //             child: EvacuationScreen(),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
 
 // Add this wrapper to prevent rebuilds and maintain state

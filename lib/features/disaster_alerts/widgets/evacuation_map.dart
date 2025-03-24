@@ -9,13 +9,15 @@ class EvacuationMap extends StatefulWidget {
   final List<EvacuationPlace> places;
   final Function(GoogleMapController) onMapCreated;
   final Set<Polyline> polylines;
+  final Set<Marker> markers; // Add this parameter
   
   const EvacuationMap({
     Key? key,
     required this.currentPosition,
     required this.places,
-    required this.onMapCreated,
     required this.polylines,
+    this.markers = const {}, // Add this parameter with default value
+    required this.onMapCreated,
   }) : super(key: key);
   
   @override

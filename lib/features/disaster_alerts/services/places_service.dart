@@ -167,4 +167,40 @@ class PlacesService {
       throw Exception('Error fetching directions: $e');
     }
   }
+
+  // Add this method to generate markers from places
+  static Set<Marker> generateMarkersFromPlaces({
+    required List<EvacuationPlace> places,
+    required LatLng currentPosition,
+    Function(EvacuationPlace)? onMarkerTap,
+  }) {
+    final Set<Marker> markers = {};
+    
+    // Add user's current location marker
+    markers.add(
+      Marker(
+        markerId: const MarkerId('current_location'),
+        position: currentPosition,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: const InfoWindow(title: 'Your Location'),
+      ),
+    );
+    
+    // Add markers for each place
+    for (final place in places) {
+      final marker = Marker(
+        markerId: MarkerId(place.placeId),
+        position: LatLng(place.lat, place.lng),
+        infoWindow: InfoWindow(
+          title: place.name,
+          snippet: place.vicinity,
+        ),
+        onTap: onMarkerTap != null ? () => onMarkerTap(place) : null,
+      );
+      
+      markers.add(marker);
+    }
+    
+    return markers;
+  }
 }

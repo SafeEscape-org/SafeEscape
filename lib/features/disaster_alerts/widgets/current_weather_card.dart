@@ -105,7 +105,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
 
   Widget _buildLoadingState() {
     return Container(
-      height: 180,
+      height: 220, // Match the height of the weather card
       decoration: BoxDecoration(
         color: Colors.blue[300],
         borderRadius: BorderRadius.circular(16),
@@ -127,7 +127,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
 
   Widget _buildErrorState() {
     return Container(
-      height: 180,
+      height: 220, // Match the height of the weather card
       decoration: BoxDecoration(
         color: Colors.blue[800],
         borderRadius: BorderRadius.circular(16),
@@ -190,6 +190,8 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
     final formattedTime = DateFormat('h:mm a').format(now);
 
     return Container(
+      // Set a fixed height to prevent overflow
+      height: 220, // Adjust this value as needed
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -209,8 +211,9 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12), // Reduced padding
         child: Column(
+          mainAxisSize: MainAxisSize.min, // Use minimum vertical space
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Location and date
@@ -321,19 +324,19 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
             ),
             
             const SizedBox(height: 20),
-            
             // Additional info
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
+                mainAxisSize: MainAxisSize.min, // Use minimum space needed
                 children: [
-                  _buildInfoItem(Icons.water_drop_outlined, '$humidity%', 'Humidity'),
-                  _buildInfoItem(Icons.air, '${windSpeed.toStringAsFixed(1)} m/s', 'Wind'),
+                  Expanded(child: _buildInfoItem(Icons.water_drop_outlined, '$humidity%', 'Humidity')),
+                  Expanded(child: _buildInfoItem(Icons.air, '${windSpeed.toStringAsFixed(1)} m/s', 'Wind')),
                 ],
               ),
             ),
@@ -345,13 +348,14 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
 
   Widget _buildInfoItem(IconData icon, String value, String label) {
     return Column(
+      mainAxisSize: MainAxisSize.min, // Use minimum vertical space
       children: [
         Icon(
           icon,
           color: Colors.white,
-          size: 20,
+          size: 18, // Slightly smaller icon
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2), // Reduced spacing
         Text(
           value,
           style: GoogleFonts.poppins(
@@ -364,7 +368,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
           label,
           style: GoogleFonts.poppins(
             color: Colors.white.withOpacity(0.9),
-            fontSize: 12,
+            fontSize: 11, // Slightly smaller font
           ),
         ),
       ],

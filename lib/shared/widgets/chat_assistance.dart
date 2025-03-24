@@ -1,18 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:disaster_management/core/constants/app_colors.dart';
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-
-  // Modified constructor to allow for const with DateTime
-  const ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-  });
-}
+import 'package:disaster_management/shared/controllers/chat_assistance_controller.dart';
+import 'package:disaster_management/shared/models/chat_message.dart';
 
 class ChatAssistance extends StatefulWidget {
   const ChatAssistance({super.key});
@@ -22,180 +11,163 @@ class ChatAssistance extends StatefulWidget {
 }
 
 class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProviderStateMixin {
-  // Replace boolean with ValueNotifier to avoid full rebuilds
-  final ValueNotifier<bool> _isExpandedNotifier = ValueNotifier<bool>(false);
-  final TextEditingController _messageController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  late ChatAssistanceController _controller;
   late AnimationController _animationController;
-  // Also use ValueNotifier for loading state
-  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier<bool>(false);
-  
-  // Fixed: Use a non-const list since we need a real DateTime
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hello! I'm your disaster assistance bot. How can I help you today?",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ),
-  ];
-
-  // Use a separate list for mutable messages
-  late List<ChatMessage> _mutableMessages;
-  // Add a ValueNotifier for messages to rebuild only the message list
-  late ValueNotifier<List<ChatMessage>> _messagesNotifier;
-
-  // Predefined responses for common emergency queries
-  final Map<String, String> _predefinedResponses = const {
-    'flood': 'In case of flooding, move to higher ground immediately. Avoid walking or driving through flood waters.',
-    'earthquake': 'During an earthquake, drop to the ground, take cover under sturdy furniture, and hold on until the shaking stops.',
-    'fire': 'If there\'s a fire, evacuate immediately. Crawl low under smoke. Call emergency services once you\'re safe.',
-    'hurricane': 'For hurricanes, follow evacuation orders. If sheltering in place, stay in a small interior room away from windows.',
-    'tornado': 'During a tornado, seek shelter in a basement or interior room on the lowest floor. Stay away from windows.',
-    'help': 'Emergency services have been notified of your location. Stay calm and wait for assistance.',
-    'emergency': 'Please specify the type of emergency you\'re facing so I can provide appropriate guidance.',
-  };
 
   @override
   void initState() {
     super.initState();
-    // Initialize mutable messages from initial messages
-    _mutableMessages = List.from(_messages);
-    _messagesNotifier = ValueNotifier<List<ChatMessage>>(_mutableMessages);
+    // Initialize the controller
+    _controller = ChatAssistanceController();
+    
+    // Set context for location services
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.setContext(context);
+        
+        // Show prediction tip after a delay
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted && !_controller.isExpandedNotifier.value) {
+            _showPredictionTip();
+          }
+        });
+      }
+    });
     
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
   }
+  
+  // Add this method to show a tip about the prediction feature
+  void _showPredictionTip() {
+    _animationController.forward();
+    
+    // Auto-hide the tip after some time
+    Future.delayed(const Duration(seconds: 8), () {
+      if (mounted) {
+        _animationController.reverse();
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
     _animationController.dispose();
-    _isExpandedNotifier.dispose();
-    _isLoadingNotifier.dispose();
-    _messagesNotifier.dispose();
+    _controller.dispose();
     super.dispose();
-  }
-
-  void _sendMessage() {
-    final messageText = _messageController.text.trim();
-    if (messageText.isEmpty || !mounted) return;
-    
-    // Add user message to chat
-    _mutableMessages.add(ChatMessage(
-      text: messageText,
-      isUser: true,
-      timestamp: DateTime.now(),
-    ));
-    _messagesNotifier.value = List.from(_mutableMessages);
-    _messageController.clear();
-    _isLoadingNotifier.value = true;
-    
-    // Scroll to bottom
-    _scrollToBottom();
-    
-    // Use a microtask to reduce frame drops
-    Future.microtask(() async {
-      // Add a small delay to show loading indicator
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      if (!mounted) return;
-      
-      // Generate a response based on the message content
-      String botResponse = _generateResponse(messageText);
-      
-      _mutableMessages.add(ChatMessage(
-        text: botResponse,
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
-      _messagesNotifier.value = List.from(_mutableMessages);
-      _isLoadingNotifier.value = false;
-      
-      _scrollToBottom();
-    });
-  }
-  
-  // Generate a simple response based on keywords in the user's message
-  String _generateResponse(String message) {
-    // Existing code remains unchanged
-    final lowerMessage = message.toLowerCase();
-    
-    // Check for keywords in predefined responses
-    for (final entry in _predefinedResponses.entries) {
-      if (lowerMessage.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    
-    // Default responses if no keywords match
-    if (lowerMessage.contains('thank')) {
-      return "You're welcome. Stay safe!";
-    } else if (lowerMessage.contains('hello') || lowerMessage.contains('hi')) {
-      return "Hello! How can I assist you with emergency information?";
-    } else if (lowerMessage.contains('evacuat')) {
-      return "If you need to evacuate, follow local authority instructions. Take emergency supplies and important documents with you.";
-    } else if (lowerMessage.contains('shelter')) {
-      return "To find the nearest shelter, check the evacuation map in the app or contact local emergency services.";
-    } else {
-      return "I'm here to help with emergency information. Could you provide more details about your situation?";
-    }
-  }
-
-  void _scrollToBottom() {
-    if (!mounted) return;
-    
-    // Use microtask to avoid frame drops
-    Future.microtask(() {
-      if (_scrollController.hasClients && mounted) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     // Get screen size for responsive layout
     final Size screenSize = MediaQuery.of(context).size;
-    final double chatWidth = screenSize.width < 400 ? screenSize.width * 0.85 : 320;
-    final double chatHeight = screenSize.height < 700 ? screenSize.height * 0.6 : 450;
+    final double chatWidth = screenSize.width < 600 
+        ? screenSize.width * 0.85 
+        : 400;
+    final double chatHeight = screenSize.height < 700 
+        ? screenSize.height * 0.6 
+        : screenSize.height * 0.7 > 600 ? 600 : screenSize.height * 0.7;
     
-    // Wrap the entire widget in RepaintBoundary to isolate its painting
-    return RepaintBoundary(
-      child: Positioned(
-        right: 16,
-        bottom: 16,
-        // Use a separate StatefulBuilder to isolate state changes
-        child: Material(
-          // Use transparent material to avoid affecting parent
-          color: Colors.transparent,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min, // Add this to minimize layout impact
-            children: [
-              // Chat window - use ValueListenableBuilder to rebuild only when expanded state changes
-              ValueListenableBuilder<bool>(
-                valueListenable: _isExpandedNotifier,
-                builder: (context, isExpanded, _) {
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: isExpanded 
-                      ? _buildChatWindow(chatWidth, chatHeight)
-                      : const SizedBox.shrink(),
-                  );
-                },
-              ),
+    // Use SafeArea to avoid system UI overlaps
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 16, bottom: 16),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Prediction tip bubble
+                SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: _animationController,
+                    curve: Curves.elasticOut,
+                  )),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: chatWidth,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.radar, color: AppColors.primaryColor),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: const Text(
+                                'Check disaster risks\nin your area!',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () {
+                                _animationController.reverse();
+                                _controller.isExpandedNotifier.value = true;
+                                _controller.checkDisasterRisks();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                minimumSize: Size.zero,
+                              ),
+                              child: const Text(
+                                'Check Now',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 
-              // Chat Button - extract to reduce rebuilds
-              _buildChatButton(),
-            ],
+                // Chat window - use ValueListenableBuilder to rebuild only when expanded state changes
+                ValueListenableBuilder<bool>(
+                  valueListenable: _controller.isExpandedNotifier,
+                  builder: (context, isExpanded, _) {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: isExpanded 
+                        ? _buildChatWindow(chatWidth, chatHeight)
+                        : const SizedBox.shrink(),
+                    );
+                  },
+                ),
+                  
+                // Chat Button - extract to reduce rebuilds
+                _buildChatButton(),
+              ],
+            ),
           ),
         ),
       ),
@@ -208,9 +180,12 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
       elevation: 10,
       borderRadius: BorderRadius.circular(20),
       color: Colors.white,
-      child: SizedBox(
+      child: Container(
         width: width,
         height: height,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         child: Column(
           children: [
             // Chat Header
@@ -218,24 +193,23 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
             
             // Chat Messages - use ValueListenableBuilder to rebuild only when messages change
             Expanded(
-              child: ValueListenableBuilder<List<ChatMessage>>(
-                valueListenable: _messagesNotifier,
-                builder: (context, messages, _) {
-                  return RepaintBoundary(
-                    child: _buildMessageList(width, messages),
-                  );
+              child: ValueListenableBuilder(
+                valueListenable: _controller.messagesNotifier,
+                builder: (context, List<ChatMessage> messages, _) {
+                  return _buildMessageList(width, messages);
                 },
               ),
             ),
             
             // Loading indicator - use ValueListenableBuilder to rebuild only when loading state changes
             ValueListenableBuilder<bool>(
-              valueListenable: _isLoadingNotifier,
+              valueListenable: _controller.isLoadingNotifier,
               builder: (context, isLoading, _) {
-                return isLoading
-                  ? const SizedBox(
-                      height: 40,
-                      child: Center(
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: isLoading ? 40 : 0,
+                  child: isLoading
+                    ? const Center(
                         child: SizedBox(
                           width: 20,
                           height: 20,
@@ -243,9 +217,9 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
                             strokeWidth: 2,
                           ),
                         ),
-                      ),
-                    )
-                  : const SizedBox.shrink();
+                      )
+                    : const SizedBox.shrink(),
+                );
               },
             ),
             
@@ -254,6 +228,22 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMessageList(double chatWidth, List<ChatMessage> messages) {
+    return ListView.builder(
+      controller: _controller.scrollController,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return _MessageBubble(
+          message: message,
+          maxWidth: chatWidth * 0.7,
+          key: ValueKey('message_$index'),
+        );
+      },
     );
   }
 
@@ -285,10 +275,21 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
             ),
           ),
           const Spacer(),
+          // Add AI prediction button
+          IconButton(
+            icon: const Icon(Icons.radar, color: Colors.white),
+            tooltip: 'Predict Disasters',
+            onPressed: () {
+              _showDisasterPredictionDialog();
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () {
-              _isExpandedNotifier.value = false;
+              _controller.isExpandedNotifier.value = false;
             },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -298,21 +299,74 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
     );
   }
 
-  Widget _buildMessageList(double chatWidth, List<ChatMessage> messages) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        return _MessageBubble(
-          message: message,
-          maxWidth: chatWidth * 0.7,
-          key: ValueKey('message_$index'),
-        );
-      },
+  // Add this method to show the disaster prediction dialog
+  void _showDisasterPredictionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('AI Disaster Prediction'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Would you like to check potential disaster risks in your current location using AI?',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This will use your current location to analyze potential risks based on historical data and environmental factors.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _controller.isExpandedNotifier.value = true;
+              _controller.checkDisasterRisks();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryColor,
+            ),
+            child: Text('Check Risks', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
+
+
 
   Widget _buildInputField() {
     return Container(
@@ -335,7 +389,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
         children: [
           Expanded(
             child: TextField(
-              controller: _messageController,
+              controller: _controller.messageController,
               decoration: InputDecoration(
                 hintText: 'Type your emergency...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -350,7 +404,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
                   vertical: 10,
                 ),
               ),
-              onSubmitted: (_) => _sendMessage(),
+              onSubmitted: (_) => _controller.sendMessage(),
             ),
           ),
           const SizedBox(width: 8),
@@ -358,7 +412,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
             color: AppColors.primaryColor,
             borderRadius: BorderRadius.circular(30),
             child: InkWell(
-              onTap: _sendMessage,
+              onTap: () => _controller.sendMessage(),
               borderRadius: BorderRadius.circular(30),
               child: const Padding(
                 padding: EdgeInsets.all(10),
@@ -382,7 +436,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
       elevation: 5,
       child: InkWell(
         onTap: () {
-          _isExpandedNotifier.value = !_isExpandedNotifier.value;
+          _controller.isExpandedNotifier.value = !_controller.isExpandedNotifier.value;
         },
         child: const SizedBox(
           width: 56,
@@ -412,7 +466,6 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Existing code remains unchanged
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -445,15 +498,19 @@ class _MessageBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: message.isUser 
                     ? AppColors.primaryColor 
-                    : Colors.grey.shade200,
+                    : message.isError
+                        ? Colors.red.shade50
+                        : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Text(
+              child: SelectableText(
                 message.text,
                 style: TextStyle(
                   color: message.isUser 
                       ? Colors.white 
-                      : Colors.black87,
+                      : message.isError
+                          ? Colors.red.shade800
+                          : Colors.black87,
                   fontSize: 14,
                 ),
               ),

@@ -16,7 +16,8 @@ import 'package:disaster_management/services/location_service.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/evacuation_map.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import '../models/place_type.dart';
-
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 class EvacuationScreen extends StatefulWidget {
   const EvacuationScreen({super.key});
   @override
@@ -32,7 +33,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   Set<Polyline> _polylines = {};
   PlaceType _selectedPlaceType = PlaceType.hospital;
   String _locationName = "Finding location..."; // Add this variable
-
+  Set<Marker> _markers = {}; // Add this line to store markers
   //chunking
   final int _initialLoadCount = 5;
   List<EvacuationPlace> _displayedPlaces = [];
@@ -48,7 +49,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     _placesScrollController.addListener(_scrollListener);
   }
 
-    @override
+  @override
   void dispose() {
     _placesScrollController.removeListener(_scrollListener);
     _placesScrollController.dispose();
@@ -56,12 +57,13 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   }
 
   void _scrollListener() {
-    if (_placesScrollController.position.pixels >= 
-        _placesScrollController.position.maxScrollExtent - 200 &&
+    if (_placesScrollController.position.pixels >=
+            _placesScrollController.position.maxScrollExtent - 200 &&
         !_isLoadingMore) {
       _loadMorePlaces();
     }
   }
+
 //must for frintend side  by location service as common location services server file
   Future<void> _initializeLocation() async {
     setState(() => _isLoading = true);
@@ -72,13 +74,13 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
           locationData["latitude"] as double,
           locationData["longitude"] as double,
         );
-        
+
         // Get address from coordinates
         final address = await LocationService.getAddressFromCoordinates(
           locationData["latitude"] as double,
           locationData["longitude"] as double,
         );
-        
+
         setState(() {
           _currentPosition = position;
           _locationName = address ?? "Unknown Location"; // Set location name
@@ -100,55 +102,56 @@ Future<void> _fetchNearbyPlaces() async {
       _allPlaces = [];
       _displayedPlaces = [];
       _nextPageToken = null;
+      _markers = {}; // Clear existing markers
+      _polylines = {}; // Clear existing polylines
     });
-    
+
     try {
       final result = await PlacesService.getNearbyPlacesWithToken(
         _currentPosition!.latitude,
         _currentPosition!.longitude,
         type: _selectedPlaceType.value,
       );
-      
+
       final places = result['places'] as List<EvacuationPlace>;
       _nextPageToken = result['next_page_token'];
-      
+
+      // Generate enhanced markers for places
+      final markers = await _generateEnhancedMarkers(
+        places: places,
+        currentPosition: _currentPosition!,
+      );
+
       setState(() {
         _allPlaces = places;
         _displayedPlaces = places.take(_initialLoadCount).toList();
+        _places = places; // Update _places list for the map
+        _markers = markers; // Set the markers
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to fetch nearby places: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // ... existing error handling ...
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   //more places loader added by self logic
-    Future<void> _loadMorePlaces() async {
+  Future<void> _loadMorePlaces() async {
     // If we've already displayed all places from the current batch
     if (_displayedPlaces.length < _allPlaces.length) {
       setState(() {
         final remainingPlaces = _allPlaces.length - _displayedPlaces.length;
         final itemsToAdd = remainingPlaces > 5 ? 5 : remainingPlaces;
-        _displayedPlaces.addAll(
-          _allPlaces.getRange(
-            _displayedPlaces.length, 
-            _displayedPlaces.length + itemsToAdd
-          )
-        );
+        _displayedPlaces.addAll(_allPlaces.getRange(
+            _displayedPlaces.length, _displayedPlaces.length + itemsToAdd));
       });
       return;
     }
-    
+
     // If we need to fetch more from the API
     if (_nextPageToken != null) {
       setState(() => _isLoadingMore = true);
-      
+
       try {
         final result = await PlacesService.getNearbyPlacesWithToken(
           _currentPosition!.latitude,
@@ -156,9 +159,9 @@ Future<void> _fetchNearbyPlaces() async {
           type: _selectedPlaceType.value,
           pageToken: _nextPageToken,
         );
-        
+
         final newPlaces = result['places'] as List<EvacuationPlace>;
-        
+
         setState(() {
           _nextPageToken = result['next_page_token'];
           _allPlaces.addAll(newPlaces);
@@ -177,6 +180,117 @@ Future<void> _fetchNearbyPlaces() async {
     }
   }
 
+   // New method to generate enhanced markers
+  Future<Set<Marker>> _generateEnhancedMarkers({
+    required List<EvacuationPlace> places,
+    required LatLng currentPosition,
+  }) async {
+    final Set<Marker> markers = {};
+    
+    // Add current location marker
+    final currentLocationMarker = await _createCustomMarker(
+      id: 'current_location',
+      position: currentPosition,
+      title: 'Your Location',
+      snippet: _locationName,
+      iconData: Icons.my_location,
+      color: Colors.blue,
+      isCurrentLocation: true,
+    );
+    markers.add(currentLocationMarker);
+    
+    // Add place markers
+    for (var place in places) {
+      final placeMarker = await _createCustomMarker(
+        id: place.placeId,
+        position: LatLng(place.lat, place.lng),
+        title: place.name,
+        snippet: place.vicinity,
+        iconData: _selectedPlaceType.icon,
+        color: EvacuationColors.primaryColor,
+        rating: place.rating,
+        onTap: () => _showRouteToPlace(place),
+      );
+      markers.add(placeMarker);
+    }
+    
+    return markers;
+  }
+
+  // Helper method to create custom marker
+  Future<Marker> _createCustomMarker({
+    required String id,
+    required LatLng position,
+    required String title,
+    required String snippet,
+    required IconData iconData,
+    required Color color,
+    double? rating,
+    bool isCurrentLocation = false,
+    VoidCallback? onTap,
+  }) async {
+    // Create custom marker icon
+    final BitmapDescriptor markerIcon = await _createMarkerBitmap(
+      iconData: iconData,
+      color: color,
+      rating: rating,
+      isCurrentLocation: isCurrentLocation,
+    );
+    
+    return Marker(
+      markerId: MarkerId(id),
+      position: position,
+      infoWindow: InfoWindow(
+        title: title,
+        snippet: snippet,
+      ),
+      icon: markerIcon,
+      onTap: onTap,
+      zIndex: isCurrentLocation ? 2 : 1, // Current location appears on top
+    );
+  }
+  
+  // Create custom marker bitmap
+  Future<BitmapDescriptor> _createMarkerBitmap({
+    required IconData iconData,
+    required Color color,
+    double? rating,
+    bool isCurrentLocation = false,
+  }) async {
+    // For simplicity, we'll use default markers with custom hues for now
+    // In a production app, you would use a custom widget and RepaintBoundary
+    // to create truly custom markers with ratings, etc.
+    
+    if (isCurrentLocation) {
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+    }
+    
+    // Use different hues based on place type or rating
+    double hue = BitmapDescriptor.hueRed;
+    
+    switch (_selectedPlaceType) {
+      case PlaceType.hospital:
+        hue = BitmapDescriptor.hueRed;
+        break;
+      case PlaceType.police:
+        hue = BitmapDescriptor.hueBlue;
+        break;
+      case PlaceType.fire:
+        hue = BitmapDescriptor.hueOrange;
+        break;
+      case PlaceType.hospital:
+        hue = BitmapDescriptor.hueGreen;
+        break;
+      case PlaceType.shelter:
+        hue = BitmapDescriptor.hueViolet;
+        break;
+      default:
+        hue = BitmapDescriptor.hueRose;
+    }
+    
+    return BitmapDescriptor.defaultMarkerWithHue(hue);
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -185,9 +299,12 @@ Future<void> _fetchNearbyPlaces() async {
     return Stack(
       children: [
         AppScaffold(
-          title: "Safety & Evacuation",  // Add this custom title
-          locationName: _locationPermissionDenied ? "Location access denied" : 
-                     _currentPosition == null ? "Finding location..." : _locationName,
+          title: "Safety & Evacuation", // Add this custom title
+          locationName: _locationPermissionDenied
+              ? "Location access denied"
+              : _currentPosition == null
+                  ? "Finding location..."
+                  : _locationName,
           backgroundColor: EvacuationColors.backgroundColor,
           drawer: const SideNavigation(userName: 'abc'),
           body: RefreshIndicator(
@@ -256,6 +373,7 @@ Future<void> _fetchNearbyPlaces() async {
                                         currentPosition: _currentPosition!,
                                         places: _places,
                                         polylines: _polylines,
+                                        markers: _markers, // Pass the markers
                                         onMapCreated: (controller) {
                                           mapController = controller;
                                         },
@@ -350,7 +468,7 @@ Future<void> _fetchNearbyPlaces() async {
             ),
           ),
         ),
-        
+
         // Add the ChatAssistance as a positioned widget
         const Positioned(
           right: 16,
@@ -361,11 +479,12 @@ Future<void> _fetchNearbyPlaces() async {
     );
   }
 
- Widget _buildPlacesList() {
+  Widget _buildPlacesList() {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       sliver: _displayedPlaces.isEmpty
-          ? SliverFillRemaining(child: _isLoading ? _buildLoadingIndicator() : _buildEmptyState())
+          ? SliverFillRemaining(
+              child: _isLoading ? _buildLoadingIndicator() : _buildEmptyState())
           : SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -373,23 +492,28 @@ Future<void> _fetchNearbyPlaces() async {
                   if (index < _displayedPlaces.length) {
                     return _buildRouteCard(_displayedPlaces[index]);
                   }
-                  
+
                   // Show loading indicator or load more button
                   if (_isLoadingMore) {
                     return _buildLoadingMoreIndicator();
-                  } else if (_displayedPlaces.length < _allPlaces.length || _nextPageToken != null) {
+                  } else if (_displayedPlaces.length < _allPlaces.length ||
+                      _nextPageToken != null) {
                     return _buildLoadMoreButton();
                   }
-                  
+
                   return null;
                 },
-                childCount: _displayedPlaces.length + 
-                  ((_displayedPlaces.length < _allPlaces.length || _nextPageToken != null) ? 1 : 0),
+                childCount: _displayedPlaces.length +
+                    ((_displayedPlaces.length < _allPlaces.length ||
+                            _nextPageToken != null)
+                        ? 1
+                        : 0),
               ),
             ),
     );
   }
-   Widget _buildLoadMoreButton() {
+
+  Widget _buildLoadMoreButton() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       alignment: Alignment.center,
@@ -409,12 +533,13 @@ Future<void> _fetchNearbyPlaces() async {
     );
   }
 
-    Widget _buildLoadingMoreIndicator() {
+  Widget _buildLoadingMoreIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       alignment: Alignment.center,
       child: const CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(EvacuationColors.primaryColor),
+        valueColor:
+            AlwaysStoppedAnimation<Color>(EvacuationColors.primaryColor),
         strokeWidth: 3,
       ),
     );
@@ -452,6 +577,7 @@ Future<void> _fetchNearbyPlaces() async {
                     currentPosition: _currentPosition!,
                     places: _places,
                     polylines: _polylines,
+                    markers: _markers, // Pass the markers
                     onMapCreated: (controller) => mapController = controller,
                   ),
                 ),
@@ -551,7 +677,7 @@ Future<void> _fetchNearbyPlaces() async {
     );
   }
 
-    Widget _buildRouteCard(EvacuationPlace place) {
+  Widget _buildRouteCard(EvacuationPlace place) {
     IconData placeIcon = _selectedPlaceType.icon;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
@@ -640,14 +766,16 @@ Future<void> _fetchNearbyPlaces() async {
                               text: place.rating!.toString(),
                               color: const Color(0xFFFB923C),
                               isSmallScreen: isSmallScreen,
-                              maxWidth: screenWidth * (isSmallScreen ? 0.15 : 0.2),
+                              maxWidth:
+                                  screenWidth * (isSmallScreen ? 0.15 : 0.2),
                             ),
                           _buildCompactInfoChip(
                             icon: Icons.location_on_rounded,
                             text: place.vicinity,
                             color: EvacuationColors.primaryColor,
                             isSmallScreen: isSmallScreen,
-                            maxWidth: screenWidth * (isSmallScreen ? 0.35 : 0.45),
+                            maxWidth:
+                                screenWidth * (isSmallScreen ? 0.35 : 0.45),
                           ),
                         ],
                       ),
@@ -684,6 +812,7 @@ Future<void> _fetchNearbyPlaces() async {
       ),
     );
   }
+
   // More compact info chip for all screen sizes
   Widget _buildCompactInfoChip({
     required IconData icon,
@@ -694,9 +823,7 @@ Future<void> _fetchNearbyPlaces() async {
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 6 : 8, 
-        vertical: isSmallScreen ? 3 : 4
-      ),
+          horizontal: isSmallScreen ? 6 : 8, vertical: isSmallScreen ? 3 : 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
@@ -731,6 +858,7 @@ Future<void> _fetchNearbyPlaces() async {
       ),
     );
   }
+
   Widget _buildLoadingIndicator() {
     return const Center(
       child: CircularProgressIndicator(color: Colors.white),

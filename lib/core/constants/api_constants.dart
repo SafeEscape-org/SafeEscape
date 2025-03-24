@@ -18,25 +18,33 @@ class ApiConstants {
   static const String firebaseIOSBundleId = 'com.example.disasterManagement';
   
   // Socket Server Configuration
-  static const String socketServerIP = '192.168.0.121';
+  // If running on emulator, use 10.0.2.2 to connect to host machine
+  // If running on physical device, use the actual server IP
+  static const String socketServerIP = '192.168.0.121'; // Your server IP
   static const int socketServerPort = 5000;
   static const int socketTimeoutMs = 20000;
   
   // Get the full socket server URL
   static String get socketServerUrl => 'http://$socketServerIP:$socketServerPort';
   
+  // Base URL for all API calls
+  static String get baseUrl => socketServerUrl;
+  
   // Weather API - Update to match the correct endpoint
-  static String get weatherApiBaseUrl => 'http://$socketServerIP:$socketServerPort/api/alerts/weather';
+  static String get weatherApiBaseUrl => '$baseUrl/api/alerts/weather';
   
   // Disaster Alerts API
-  static String get disasterAlertsApiUrl => 'http://$socketServerIP:$socketServerPort/api/disasters/active';
+  static String get disasterAlertsApiUrl => '$baseUrl/api/disasters/active';
   
   // Gemini Chat API
-  static String get geminiChatApiUrl => 'http://$socketServerIP:$socketServerPort';
+  static String get geminiChatApiUrl => baseUrl;
   
   // Get chat history endpoint
   static String getChatHistoryUrl(String sessionId) => '$geminiChatApiUrl/api/gemini/chat/$sessionId/history';
   
   // Get message endpoint
   static String getChatMessageUrl(String sessionId) => '$geminiChatApiUrl/api/gemini/chat/$sessionId/message';
+  
+  // Disaster prediction endpoint
+  static String get disasterPredictionUrl => '$baseUrl/api/ai/predict';
 }
