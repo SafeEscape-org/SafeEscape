@@ -105,7 +105,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
 
   Widget _buildLoadingState() {
     return Container(
-      height: 220, // Match the height of the weather card
+      height: 250, // Match the height of the weather card
       decoration: BoxDecoration(
         color: Colors.blue[300],
         borderRadius: BorderRadius.circular(16),
@@ -127,7 +127,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
 
   Widget _buildErrorState() {
     return Container(
-      height: 220, // Match the height of the weather card
+      height: 250, // Match the height of the weather card
       decoration: BoxDecoration(
         color: Colors.blue[800],
         borderRadius: BorderRadius.circular(16),
@@ -190,8 +190,8 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
     final formattedTime = DateFormat('h:mm a').format(now);
 
     return Container(
-      // Set a fixed height to prevent overflow
-      height: 220, // Adjust this value as needed
+      // Increase height by 10 pixels to fix overflow
+      height: 250,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -211,44 +211,49 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12), // Reduced padding
+        padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Use minimum vertical space
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Location and date
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$cityName, $country',
-                          style: GoogleFonts.poppins(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            size: 16,
                           ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '$formattedDate • $formattedTime',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '$cityName, $country',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      Text(
+                        '$formattedDate • $formattedTime',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 
                 // Weather icon
@@ -260,7 +265,7 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
               ],
             ),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 12), // Reduced spacing
             
             // Temperature and description
             Row(
@@ -299,41 +304,45 @@ class _CurrentWeatherCardState extends State<CurrentWeatherCard> {
                   ],
                 ),
                 
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      condition,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        condition,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Text(
-                      description,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
+                      Text(
+                        description,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.right,
                       ),
-                      textAlign: TextAlign.right,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 12), // Reduced spacing
+            
             // Additional info
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                mainAxisSize: MainAxisSize.min, // Use minimum space needed
                 children: [
                   Expanded(child: _buildInfoItem(Icons.water_drop_outlined, '$humidity%', 'Humidity')),
                   Expanded(child: _buildInfoItem(Icons.air, '${windSpeed.toStringAsFixed(1)} m/s', 'Wind')),

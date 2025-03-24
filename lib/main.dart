@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:disaster_management/core/constants/api_constants.dart';
+import 'package:disaster_management/features/disaster_alerts/pages/emergency_contacts_screen.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart'; // Add this import
@@ -9,7 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:disaster_management/config/fcm_config.dart';
 import 'package:disaster_management/config/firebase_config.dart';
 import 'package:disaster_management/core/constants/app_colors.dart';
-import 'package:disaster_management/features/disaster_alerts/pages/assistance_help_screen.dart';
+
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/evacuation_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
@@ -35,20 +36,31 @@ void main() async {
   // Initialize Flutter binding first
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   
-  // Preserve splash screen while initializing
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  // Add these lines to improve performance
+  if (kReleaseMode) {
+    // Disable debug prints in release mode
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
   
-  // Optimize rendering performance
-  // Disable frame reporting to reduce "updateAcquireFence" errors
+  // Optimize Flutter rendering
+  WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = false;
+  
+  // Reduce frame reporting to minimize logs
   debugPrintBeginFrameBanner = false;
   debugPrintEndFrameBanner = false;
   
-  // Add these lines to reduce rendering issues
+  // Preserve splash screen while initializing
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  
+  // Initialize rendering performance
+  debugPrintBeginFrameBanner = false;
+  debugPrintEndFrameBanner = false;
+  
   if (kReleaseMode) {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
   
-  // Initialize Firebase first before creating socket service
+  // Initialize Firebase synchronously to ensure it's ready before any Firebase calls
   try {
     await FirebaseConfig.initializeFirebase();
     debugPrint('✅ Firebase initialized successfully');
@@ -56,16 +68,20 @@ void main() async {
     debugPrint('⚠️ Firebase initialization error: $e');
   }
   
-  // Create service instance once to avoid multiple instances
-  final socketService = SocketService();
+  // Add a small delay before removing splash screen to ensure Firebase is fully initialized
+  await Future.delayed(const Duration(milliseconds: 800));
   
-  // Remove splash screen before starting the app
+  // Remove splash screen
   FlutterNativeSplash.remove();
   
-  // Start the app with the provider properly wrapped
+  // Start the app
   runApp(
-    ChangeNotifierProvider<SocketService>.value(
-      value: socketService,
+    MultiProvider(
+      providers: [
+        Provider<SocketService>(
+          create: (_) => SocketService(),
+        ),
+      ],
       child: const MyApp(),
     ),
   );
@@ -84,10 +100,10 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Use the notification service's navigator key
       navigatorKey: NotificationService().navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -103,20 +119,32 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/auth',
       routes: {
-        '/auth': (context) => StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.authStateChanges(),
+        '/auth': (context) => FutureBuilder(
+          // Use FutureBuilder with a small delay to ensure Firebase Auth is ready
+          future: Future.delayed(const Duration(milliseconds: 300)),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
             }
+            
+            return StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-            if (snapshot.hasData) {
-              return const MainScreen();
-            }
+                if (snapshot.hasData) {
+                  return const MainScreen();
+                }
 
-            return const RegistrationPage();
+                return const RegistrationPage();
+              },
+            );
           },
         ),
         '/home': (context) => const MainScreen(),
@@ -154,9 +182,8 @@ void initState() {
   // Register for app lifecycle events
   WidgetsBinding.instance.addObserver(this);
   
-  // Initialize socket AFTER the first frame
+  // Initialize only essential features after the first frame
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    _initializeSocket();
     _deferredInitialization();
   });
 }
@@ -171,22 +198,6 @@ void initState() {
     if (_isInForeground) {
       // App came to foreground, schedule a frame
       SchedulerBinding.instance.scheduleFrame();
-      
-      // Reconnect socket if needed
-      _checkAndReconnectSocket();
-    }
-  }
-  
-  void _checkAndReconnectSocket() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    if (!socketService.isConnected) {
-      _runInBackground(() async {
-        socketService.connectSocket();
-        return;
-      });
     }
   }
   
@@ -199,10 +210,6 @@ void initState() {
       try {
         // Perform all initialization before updating state
         await _setupUserUpdates();
-        
-        // Don't initialize socket here since it's handled in home screen
-        // This prevents duplicate initialization and UI flickers
-        // _initializeSocket();
         
         // Only update state once at the end of all initialization
         if (mounted) {
@@ -222,55 +229,6 @@ void initState() {
     });
   }
 
-  void _initializeSocket() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      debugPrint('⚠️ Cannot initialize socket: No authenticated user');
-      return;
-    }
-    
-    // Store reference to avoid context issues during async operations
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    
-    // Don't store ScaffoldMessenger reference here - it's causing issues
-    // Instead, use a safer approach for showing errors
-    
-    // Run socket initialization in a separate isolate or compute
-    Future.microtask(() {
-      try {
-        if (!socketService.isConnected) {
-          // Add listener for connection event before connecting
-          socketService.socket.on('connect', (_) {
-            debugPrint('🟢 Socket connected, registering user: ${user.uid}');
-            socketService.registerUser();
-          });
-          
-          // Add error handling for socket connection with better timeout handling
-          socketService.socket.on('connect_error', (error) {
-            debugPrint('⚠️ Socket connection error: $error');
-            
-            // Don't try to show UI notifications from socket callbacks
-            // They can be called after the widget is disposed
-          });
-          
-          // Add reconnection logic
-          socketService.socket.on('reconnect', (_) {
-            debugPrint('🔄 Socket reconnected');
-            socketService.registerUser();
-          });
-          
-          // Connect with proper error handling and timeout
-          debugPrint('🔌 Connecting to socket server at ${ApiConstants.socketServerUrl}');
-          socketService.connectSocket();
-        } else {
-          // If already connected, just register
-          socketService.registerUser();
-        }
-      } catch (e) {
-        debugPrint('❌ Socket initialization error: $e');
-      }
-    });
-  }
 
   // Add this helper method for background processing
   Future<void> _runInBackground(Future<void> Function() task) async {
@@ -366,11 +324,6 @@ void initState() {
     WidgetsBinding.instance.removeObserver(this);
     
     _locationUpdateTimer?.cancel();
-    // Only disconnect if connected
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    if (socketService.isConnected) {
-      socketService.socket.disconnect();
-    }
     super.dispose();
   }
 
@@ -402,7 +355,7 @@ void initState() {
             ),
             KeepAliveWrapper(
               key: _screenKeys[1],
-              child: EmergencyScreen(),
+              child: EmergencyContactsScreen(),
             ),
             KeepAliveWrapper(
               key: _screenKeys[2],
@@ -421,32 +374,7 @@ void initState() {
     );
   }
   
-  // Remove this method as it's causing rendering issues
-  // Widget _buildCurrentScreen() {
-  //   // Use keys to help Flutter identify which widgets have changed
-  //   return KeyedSubtree(
-  //     key: ValueKey('main_screen_$currentIndex'),
-  //     child: RepaintBoundary(
-  //       child: IndexedStack(
-  //         index: currentIndex,
-  //         children: [
-  //           KeepAliveWrapper(
-  //             key: _screenKeys[0],
-  //             child: CombinedHomeWeatherComponent(),
-  //           ),
-  //           KeepAliveWrapper(
-  //             key: _screenKeys[1],
-  //             child: EmergencyScreen(),
-  //           ),
-  //           KeepAliveWrapper(
-  //             key: _screenKeys[2],
-  //             child: EvacuationScreen(),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
+
 }
 
 // Add this wrapper to prevent rebuilds and maintain state

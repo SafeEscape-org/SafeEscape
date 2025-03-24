@@ -28,19 +28,23 @@ class _RecentEarthquakesCardState extends State<RecentEarthquakesCard> {
 
   Future<void> _fetchEarthquakes({bool loadMore = false}) async {
     if (loadMore) {
+      if (!mounted) return;
       setState(() {
         _isLoadingMore = true;
       });
     } else {
+      if (!mounted) return;
       setState(() {
         _isLoading = true;
       });
     }
-
+    
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.socketServerUrl}/api/alerts/earthquakes?page=$_page&limit=$_limit'),
       );
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         // Parse the USGS format earthquake data
@@ -63,6 +67,7 @@ class _RecentEarthquakesCardState extends State<RecentEarthquakesCard> {
             };
           }).toList();
           
+          if (!mounted) return;
           setState(() {
             if (loadMore) {
               _earthquakes.addAll(newEarthquakes);
@@ -76,6 +81,7 @@ class _RecentEarthquakesCardState extends State<RecentEarthquakesCard> {
             _isLoadingMore = false;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             if (!loadMore) {
               _earthquakes = [];
@@ -86,6 +92,7 @@ class _RecentEarthquakesCardState extends State<RecentEarthquakesCard> {
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           if (!loadMore) {
             _earthquakes = [];
@@ -97,6 +104,7 @@ class _RecentEarthquakesCardState extends State<RecentEarthquakesCard> {
       }
     } catch (e) {
       debugPrint('Error fetching earthquakes: $e');
+      if (!mounted) return;
       setState(() {
         if (!loadMore) {
           _earthquakes = [];

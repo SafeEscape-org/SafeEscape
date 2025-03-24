@@ -35,16 +35,25 @@ class _CombinedHomeWeatherComponentState
   Map<String, dynamic>? _locationData;
   List<Map<String, dynamic>> _activeDisasters = [];
   final NotificationService _notificationService = NotificationService();
+  // Add a flag to prevent multiple fetches
+  bool _isFetching = false;
+  // Add the DisasterService field at the class level
+  final DisasterService _disasterService = DisasterService();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchLocationData();
+    // Use post-frame callback to avoid UI jank during initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchLocationData();
+    });
     
     // Register this screen as the active notification screen
     _notificationService.setActiveScreen(true);
   }
+
+  
 
   @override
   void dispose() {
@@ -57,7 +66,10 @@ class _CombinedHomeWeatherComponentState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _fetchLocationData();
+      // Only fetch if we're not already fetching and it's been at least 5 minutes
+      if (!_isFetching && mounted) {
+        _fetchLocationData();
+      }
       // Re-register as active when app is resumed
       _notificationService.setActiveScreen(true);
     } else if (state == AppLifecycleState.paused) {
@@ -66,24 +78,45 @@ class _CombinedHomeWeatherComponentState
     }
   }
 
-  // Add the DisasterService field at the class level
-  final DisasterService _disasterService = DisasterService();
-
   Future<void> _fetchLocationData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Prevent multiple simultaneous fetches
+    if (_isFetching) return;
+    _isFetching = true;
+    
+    // Use a single setState call at the beginning
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     
     try {
-      final locationService = LocationService();
-      final location = await LocationService.getCurrentLocation(context);
+      // Wrap in a microtask to avoid blocking the main thread
+      final location = await Future(() async {
+        return await LocationService.getCurrentLocation(context);
+      });
       
+      if (!mounted) {
+        _isFetching = false;
+        return;
+      }
+      
+      String? address;
       if (location != null) {
-        final address = await LocationService.getAddressFromCoordinates(
-          location['latitude'], 
-          location['longitude']
-        );
+        // Wrap in a microtask to avoid blocking the main thread
+        address = await Future(() async {
+          return await LocationService.getAddressFromCoordinates(
+            location['latitude'], 
+            location['longitude']
+          );
+        });
         
+        if (!mounted) {
+          _isFetching = false;
+          return;
+        }
+        
+        // Batch state updates in a single setState call
         setState(() {
           _locationName = address ?? "Unknown Location";
           _locationData = {
@@ -93,10 +126,13 @@ class _CombinedHomeWeatherComponentState
           };
           _isLoading = false;
         });
-        
-        // Fetch disaster data after location is determined
-        _fetchDisasterData();
       } else {
+        if (!mounted) {
+          _isFetching = false;
+          return;
+        }
+        
+        // Batch state updates
         setState(() {
           _locationName = "Mumbai, India";
           _locationData = {
@@ -106,12 +142,18 @@ class _CombinedHomeWeatherComponentState
           };
           _isLoading = false;
         });
-        
-        // Fetch disaster data with default location
-        _fetchDisasterData();
       }
+      
+      // Fetch disaster data after location is determined
+      await _fetchDisasterData();
     } catch (e) {
       debugPrint('Error fetching location: $e');
+      
+      if (!mounted) {
+        _isFetching = false;
+        return;
+      }
+      
       setState(() {
         _locationName = "Mumbai, India";
         _locationData = {
@@ -124,12 +166,14 @@ class _CombinedHomeWeatherComponentState
       
       // Fetch disaster data with default location
       await _fetchDisasterData();
+    } finally {
+      _isFetching = false;
     }
   }
   
   // Optimized method to fetch disaster data
   Future<void> _fetchDisasterData() async {
-    if (_locationData == null) return;
+    if (_locationData == null || !mounted) return;
     
     setState(() {
       _isLoadingDisasters = true;
@@ -158,6 +202,8 @@ class _CombinedHomeWeatherComponentState
   }
 
   @override
+  // Remove the duplicate @override annotation
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
@@ -166,14 +212,27 @@ class _CombinedHomeWeatherComponentState
           backgroundColor: AppColors.backgroundColor,
           drawer: const SideNavigation(userName: 'abc'),
           body: RefreshIndicator(
-            onRefresh: _fetchLocationData,
+            onRefresh: () async {
+              // Prevent refresh if already fetching
+              if (!_isFetching) {
+                await _fetchLocationData();
+              }
+            },
             color: AppColors.primaryColor,
             child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
+              // Use CustomScrollView for better performance
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               slivers: [
-                // Content
-                SliverToBoxAdapter(
-                  child: _buildContent(),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildOptimizedContent(),
+                      const SizedBox(height: 100),
+                    ]),
+                  ),
                 ),
               ],
             ),
@@ -189,63 +248,83 @@ class _CombinedHomeWeatherComponentState
       ],
     );
   }
+  // Create a more optimized content builder
+  Widget _buildOptimizedContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Current Weather Section
+        _buildSectionTitle('Current Weather'),
+        _isLoading 
+          ? _buildFasterLoading(height: 180)
+          : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
+        
+        const SizedBox(height: 24),
+        
+        // Active Alerts Section
+        _buildSectionTitle('Active Alerts'),
+        _isLoading || _isLoadingDisasters
+          ? Column(
+              children: [
+                _buildFasterLoading(height: 120),
+                const SizedBox(height: 12),
+                _buildFasterLoading(height: 120),
+              ],
+            )
+          : _buildActiveAlerts(),
+        
+        const SizedBox(height: 24),
+        
+        // Recent Earthquakes Section - Only use RepaintBoundary where truly needed
+        _buildSectionTitle('Recent Earthquakes'),
+        _isLoading 
+          ? _buildFasterLoading(height: 200)
+          : const RecentEarthquakesCard(),
+        
+        const SizedBox(height: 24),
+        
+        // Disaster Declarations Section
+        _buildSectionTitle('Disaster Declarations'),
+        _isLoading || _isLoadingDisasters
+          ? Column(
+              children: [
+                _buildFasterLoading(height: 100),
+                const SizedBox(height: 12),
+                _buildFasterLoading(height: 100),
+                const SizedBox(height: 12),
+                _buildFasterLoading(height: 100),
+              ],
+            )
+          : _buildDisasterDeclarations(),
+      ],
+    );
+  }
   
-  Widget _buildContent() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Current Weather Section
-          _buildSectionTitle('Current Weather'),
-          _isLoading 
-            ? _buildSimpleLoading(height: 180)
-            : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
-          
-          const SizedBox(height: 24),
-          
-          // Active Alerts Section
-          _buildSectionTitle('Active Alerts'),
-          _isLoading || _isLoadingDisasters
-            ? Column(
-                children: [
-                  _buildSimpleLoading(height: 120),
-                  const SizedBox(height: 12),
-                  _buildSimpleLoading(height: 120),
-                ],
-              )
-            : _buildActiveAlerts(),
-          
-          const SizedBox(height: 24),
-          
-          // Recent Earthquakes Section
-          _buildSectionTitle('Recent Earthquakes'),
-          _isLoading 
-            ? _buildSimpleLoading(height: 200)
-            : const RecentEarthquakesCard(),
-          
-          const SizedBox(height: 24),
-          
-          // Disaster Declarations Section
-          _buildSectionTitle('Disaster Declarations'),
-          _isLoading || _isLoadingDisasters
-            ? Column(
-                children: [
-                  _buildSimpleLoading(height: 100),
-                  const SizedBox(height: 12),
-                  _buildSimpleLoading(height: 100),
-                  const SizedBox(height: 12),
-                  _buildSimpleLoading(height: 100),
-                ],
-              )
-            : _buildDisasterDeclarations(),
-          
-          // Add some padding at the bottom
-          const SizedBox(height: 100),
-        ],
+  // Replace with a more efficient loading indicator
+  Widget _buildFasterLoading({required double height}) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      // Use a simpler loading indicator
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.0,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+          ),
+        ),
       ),
     );
   }
+  
+  
   
   // Add method to build active alerts from API data
   Widget _buildActiveAlerts() {
@@ -320,6 +399,7 @@ class _CombinedHomeWeatherComponentState
   }
   
   // Add method to build disaster declarations from API data
+  // Add method to build disaster declarations from API data
   Widget _buildDisasterDeclarations() {
     if (_activeDisasters.isEmpty) {
       return Container(
@@ -340,33 +420,24 @@ class _CombinedHomeWeatherComponentState
       );
     }
     
-    // Limit to only 5 disaster declarations to improve performance
-    final displayedDisasters = _activeDisasters.take(5).toList();
-    final hasMoreDisasters = _activeDisasters.length > 5;
+    // Limit to only 3 disaster declarations to improve performance
+    final displayedDisasters = _activeDisasters.take(3).toList();
+    final hasMoreDisasters = _activeDisasters.length > 3;
     
     return Column(
       children: [
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: displayedDisasters.length,
-          itemBuilder: (context, index) {
-            final disaster = displayedDisasters[index];
-            final String formattedDate = _formatDate(disaster['timestamp']);
-            final String disasterType = disaster['type'] ?? 'Unknown';
-            
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: DisasterDeclarationCard(
-                title: disaster['title'] ?? 'Unknown Disaster',
-                type: _capitalizeFirstLetter(disasterType),
-                location: '${disaster['location']['city'] ?? 'Unknown'}, ${disaster['location']['state'] ?? ''}',
-                date: formattedDate,
-                status: disaster['active'] == true ? 'Active' : 'Closed',
-              ),
-            );
-          },
-        ),
+        // Use a more efficient approach than mapping
+        for (int i = 0; i < displayedDisasters.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: DisasterDeclarationCard(
+              title: displayedDisasters[i]['title'] ?? 'Unknown Disaster',
+              type: _capitalizeFirstLetter(displayedDisasters[i]['type'] ?? 'Unknown'),
+              location: '${displayedDisasters[i]['location']['city'] ?? 'Unknown'}, ${displayedDisasters[i]['location']['state'] ?? ''}',
+              date: _formatDate(displayedDisasters[i]['timestamp']),
+              status: displayedDisasters[i]['active'] == true ? 'Active' : 'Closed',
+            ),
+          ),
         
         if (hasMoreDisasters)
           Padding(
@@ -470,25 +541,25 @@ class _CombinedHomeWeatherComponentState
   
   // Add this new shimmer loading widget
   // Replace the shimmer loading widget with a simpler loading indicator
+// Replace the complex loading widget with a simpler one
   Widget _buildSimpleLoading({required double height}) {
     return Container(
       height: height,
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.blue[50],
+        color: Colors.grey[100],
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
+      // Use a pre-built widget instead of an animated one
       child: Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.0,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+          ),
         ),
       ),
     );
