@@ -196,32 +196,47 @@ class _SideNavigationState extends State<SideNavigation> with SingleTickerProvid
           icon: Icons.home_rounded,
           title: 'Home',
           index: 0,
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/home');
+          },
         ),
         _buildNavItem(
           icon: Icons.notifications_rounded,
           title: 'Notifications',
           badge: '3',
           index: 1,
+          onTap: () {
+            // Navigate to notifications
+            Navigator.pop(context);
+          },
         ),
         _buildNavItem(
           icon: Icons.shield_rounded,
           title: 'Emergency Contacts',
           index: 2,
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/emergency_contacts');
+          },
+        ),
+        _buildNavItem(
+          icon: Icons.directions_run,
+          title: 'Evacuation',
+          index: 3,
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/evacuation');
+          },
         ),
         _buildNavItem(
           icon: Icons.history_rounded,
           title: 'History',
-          index: 3,
-        ),
-        _buildNavItem(
-          icon: Icons.settings_rounded,
-          title: 'Settings',
           index: 4,
-        ),
-        _buildNavItem(
-          icon: Icons.help_outline_rounded,
-          title: 'Help & Support',
-          index: 5,
+          onTap: () {
+            // Navigate to history
+            Navigator.pop(context);
+          },
         ),
       ],
     );
@@ -232,6 +247,7 @@ class _SideNavigationState extends State<SideNavigation> with SingleTickerProvid
     required String title,
     String? badge,
     required int index,
+    VoidCallback? onTap,
   }) {
     final isSelected = _selectedIndex == index;
     
@@ -257,9 +273,9 @@ class _SideNavigationState extends State<SideNavigation> with SingleTickerProvid
               _selectedIndex = index;
             });
             
-            // Handle navigation
-            if (index == 0) {
-              Navigator.pop(context);
+            // Execute the provided onTap callback
+            if (onTap != null) {
+              onTap();
             }
           },
           borderRadius: BorderRadius.circular(16),

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
 import 'package:disaster_management/core/constants/api_constants.dart';
 import 'package:disaster_management/features/disaster_alerts/constants/colors.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/add_contact_form.dart';
+// TODO: Create and import the AddContactForm widget
+// import 'package:disaster_management/features/disaster_alerts/widgets/add_contact_form.dart';
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 
@@ -222,7 +224,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ),
             ),
             padding: const EdgeInsets.all(16),
-            child: AddContactForm(
+            child: _buildAddContactForm(
               onCancel: () => Navigator.pop(context),
               onSubmit: (contactData) {
                 print('Form submitted with data: $contactData');
@@ -236,12 +238,17 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        AppScaffold(
-          locationName: "Emergency Contacts",
-          backgroundColor: EvacuationColors.backgroundColor,
-          body: RefreshIndicator(
+    // Get the current user's name if available
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    final String userName = currentUser?.displayName ?? '';
+    
+    return AppScaffold(
+      locationName: "Emergency Contacts",
+      backgroundColor: EvacuationColors.backgroundColor,
+      drawer: const SideNavigation(userName: 'User'),  // Use a constant value for now
+      body: Stack(
+        children: [
+          RefreshIndicator(
             onRefresh: _fetchContacts,
             color: EvacuationColors.primaryColor,
             child: CustomScrollView(
@@ -265,23 +272,24 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ],
             ),
           ),
-        ),
-        // Add FloatingActionButton as a positioned widget
-        Positioned(
-          right: 16,
-          bottom: 80,
-          child: FloatingActionButton(
-            onPressed: _showAddContactForm,
-            backgroundColor: EvacuationColors.primaryColor,
-            child: const Icon(Icons.add, color: Colors.white),
+          // Add FloatingActionButton as a positioned widget
+          Positioned(
+            left: 16,  // Changed from right to left
+            bottom: 100,
+            child: FloatingActionButton(
+              onPressed: _showAddContactForm,
+              backgroundColor: EvacuationColors.primaryColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
           ),
-        ),
-        const Positioned(
-          right: 16,
-          bottom: 16,
-          child: ChatAssistance(),
-        ),
-      ],
+          // Add the ChatAssistance widget
+          const Positioned(
+            right: 16,
+            bottom: 24,
+            child: ChatAssistance(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -655,6 +663,130 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           ),
         );
       },
+    );
+  }
+
+  // Add this method to build the contact form
+  Widget _buildAddContactForm({
+    required VoidCallback onCancel,
+    required Function(Map<String, String>) onSubmit,
+  }) {
+    final _formKey = GlobalKey<FormState>();
+    final _nameController = TextEditingController();
+    final _phoneController = TextEditingController();
+    final _relationshipController = TextEditingController();
+    
+    return SingleChildScrollView(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Add Emergency Contact',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: EvacuationColors.textColor,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: onCancel,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                prefixIcon: const Icon(Icons.person),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _phoneController,
+              decoration: InputDecoration(
+                labelText: 'Phone Number',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                prefixIcon: const Icon(Icons.phone),
+                hintText: '+911234567890',
+              ),
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a phone number';
+                }
+                // Basic phone validation - should start with + and have at least 10 digits
+                if (!value.startsWith('+') || value.length < 11) {
+                  return 'Please enter a valid phone number with country code';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _relationshipController,
+              decoration: InputDecoration(
+                labelText: 'Relationship',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                prefixIcon: const Icon(Icons.people),
+                hintText: 'Family, Friend, etc.',
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a relationship';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  // Create contact data map
+                  final contactData = {
+                    'name': _nameController.text.trim(),
+                    'phone': _phoneController.text.trim(),
+                    'relationship': _relationshipController.text.trim(),
+                  };
+                  
+                  // Call the onSubmit callback with the contact data
+                  onSubmit(contactData);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EvacuationColors.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Add Contact'),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 }

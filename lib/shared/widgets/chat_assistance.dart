@@ -76,98 +76,103 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
         alignment: Alignment.bottomRight,
         child: Padding(
           padding: const EdgeInsets.only(right: 16, bottom: 16),
-          child: Material(
-            color: Colors.transparent,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Prediction tip bubble
-                SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1, 0),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: _animationController,
-                    curve: Curves.elasticOut,
-                  )),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: chatWidth,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+          child: Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              // Chat window - use ValueListenableBuilder to rebuild only when expanded state changes
+              ValueListenableBuilder<bool>(
+                valueListenable: _controller.isExpandedNotifier,
+                builder: (context, isExpanded, _) {
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: isExpanded 
+                      ? _buildChatWindow(chatWidth, chatHeight)
+                      : const SizedBox.shrink(),
+                  );
+                },
+              ),
+              
+              // Prediction tip bubble
+              ValueListenableBuilder<bool>(
+                valueListenable: _controller.isExpandedNotifier,
+                builder: (context, isExpanded, _) {
+                  if (isExpanded) return const SizedBox.shrink();
+                  
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(1, 0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: _animationController,
+                      curve: Curves.elasticOut,
+                    )),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 70), // Added space for the button
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: chatWidth,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.radar, color: AppColors.primaryColor),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: const Text(
-                                'Check disaster risks\nin your area!',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () {
-                                _animationController.reverse();
-                                _controller.isExpandedNotifier.value = true;
-                                _controller.checkDisasterRisks();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryColor,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                minimumSize: Size.zero,
-                              ),
-                              child: const Text(
-                                'Check Now',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.radar, color: AppColors.primaryColor),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: const Text(
+                                    'Check disaster risks\nin your area!',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 12),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    _animationController.reverse();
+                                    _controller.isExpandedNotifier.value = true;
+                                    _controller.checkDisasterRisks();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryColor,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    minimumSize: Size.zero,
+                                  ),
+                                  child: const Text(
+                                    'Check Now',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
+              ),
                 
-                // Chat window - use ValueListenableBuilder to rebuild only when expanded state changes
-                ValueListenableBuilder<bool>(
-                  valueListenable: _controller.isExpandedNotifier,
-                  builder: (context, isExpanded, _) {
-                    return AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: isExpanded 
-                        ? _buildChatWindow(chatWidth, chatHeight)
-                        : const SizedBox.shrink(),
-                    );
-                  },
-                ),
-                  
-                // Chat Button - extract to reduce rebuilds
-                _buildChatButton(),
-              ],
-            ),
+              // Chat Button - extract to reduce rebuilds
+              _buildChatButton(),
+            ],
           ),
         ),
       ),
@@ -176,56 +181,60 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
 
   // Extract chat window to a separate method to reduce rebuilds
   Widget _buildChatWindow(double width, double height) {
-    return Material(
-      elevation: 10,
-      borderRadius: BorderRadius.circular(20),
-      color: Colors.white,
-      child: Container(
-        width: width,
-        height: height,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        child: Column(
-          children: [
-            // Chat Header
-            _buildChatHeader(),
-            
-            // Chat Messages - use ValueListenableBuilder to rebuild only when messages change
-            Expanded(
-              child: ValueListenableBuilder(
-                valueListenable: _controller.messagesNotifier,
-                builder: (context, List<ChatMessage> messages, _) {
-                  return _buildMessageList(width, messages);
+    return Positioned(
+      bottom: 70, // Position above the chat button
+      right: 0,
+      child: Material(
+        elevation: 10,
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        child: Container(
+          width: width,
+          height: height,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            children: [
+              // Chat Header
+              _buildChatHeader(),
+              
+              // Chat Messages - use ValueListenableBuilder to rebuild only when messages change
+              Expanded(
+                child: ValueListenableBuilder(
+                  valueListenable: _controller.messagesNotifier,
+                  builder: (context, List<ChatMessage> messages, _) {
+                    return _buildMessageList(width, messages);
+                  },
+                ),
+              ),
+              
+              // Loading indicator - use ValueListenableBuilder to rebuild only when loading state changes
+              ValueListenableBuilder<bool>(
+                valueListenable: _controller.isLoadingNotifier,
+                builder: (context, isLoading, _) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: isLoading ? 40 : 0,
+                    child: isLoading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                  );
                 },
               ),
-            ),
-            
-            // Loading indicator - use ValueListenableBuilder to rebuild only when loading state changes
-            ValueListenableBuilder<bool>(
-              valueListenable: _controller.isLoadingNotifier,
-              builder: (context, isLoading, _) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: isLoading ? 40 : 0,
-                  child: isLoading
-                    ? const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-                );
-              },
-            ),
-            
-            // Input Field
-            _buildInputField(),
-          ],
+              
+              // Input Field
+              _buildInputField(),
+            ],
+          ),
         ),
       ),
     );

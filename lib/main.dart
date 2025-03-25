@@ -148,13 +148,17 @@ class MyApp extends StatelessWidget {
           },
         ),
         '/home': (context) => const MainScreen(),
+        '/emergency_contacts': (context) => const MainScreen(initialIndex: 1),
+        '/evacuation': (context) => const MainScreen(initialIndex: 2),
       },
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+  
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -173,20 +177,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final List<GlobalKey> _screenKeys = [
     GlobalKey(), GlobalKey(), GlobalKey()
   ];
+  
+  late int currentIndex;
 
   @override
-@override
-void initState() {
-  super.initState();
-  
-  // Register for app lifecycle events
-  WidgetsBinding.instance.addObserver(this);
-  
-  // Initialize only essential features after the first frame
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _deferredInitialization();
-  });
-}
+  void initState() {
+    super.initState();
+    
+    // Initialize currentIndex with the provided initialIndex
+    currentIndex = widget.initialIndex;
+    
+    // Register for app lifecycle events
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Initialize only essential features after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _deferredInitialization();
+    });
+  }
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -327,7 +335,7 @@ void initState() {
     super.dispose();
   }
 
-  int currentIndex = 0;
+ 
   void onTabSelected(int index) {
     if (currentIndex == index || !mounted) return;
     
