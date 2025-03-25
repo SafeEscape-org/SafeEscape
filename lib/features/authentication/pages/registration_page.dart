@@ -72,6 +72,96 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                   children: [
                     const SizedBox(height: 30),
                     
+                   
+                    
+                    const SizedBox(height: 40),
+                    
+                    // Modern glass form container
+                    Container(
+                      decoration: _glassCardDecoration,
+                      padding: const EdgeInsets.all(28),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Form header
+                            Text(
+                              'User Authentication',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textColor,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Please provide your information to continue',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                color: AppColors.textColor.withOpacity(0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            
+                            // Form fields with subtle animations
+                            _buildAnimatedInputField(
+                              controller: _nameController,
+                              label: 'Full Name',
+                              icon: Icons.person_outline_rounded,
+                              delay: 0.2,
+                            ),
+                            _buildAnimatedInputField(
+                              controller: _emailController,
+                              label: 'Email',
+                              icon: Icons.email_outlined,
+                              delay: 0.3,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            _buildAnimatedInputField(
+                              controller: _passwordController,
+                              label: 'Password',
+                              icon: Icons.lock_outline_rounded,
+                              isPassword: true,
+                              delay: 0.4,
+                            ),
+                            _buildAnimatedInputField(
+                              controller: _phoneController,
+                              label: 'Phone Number',
+                              icon: Icons.phone_iphone,
+                              delay: 0.5,
+                              keyboardType: TextInputType.phone,
+                            ),
+                            _buildLocationSection(), // Add this line
+                            // Gender dropdown with animation
+                            AnimatedDropdownField(
+                              value: _gender,
+                              label: 'Gender',
+                              prefixIcon: Icons.people_outline_rounded,
+                              items: const ['Male', 'Female', 'Other'],
+                              onChanged: (value) => setState(() => _gender = value!),
+                              animation: _animationController,
+                              delay: 0.6,
+                            ),
+                            
+                            const SizedBox(height: 24),
+                            
+                            // Register button with animation
+                            AnimatedButton(
+                              onPressed: _handleRegistration,
+                              text: 'Authenticate',
+                              isLoading: _isLoading,
+                              animation: _animationController,
+                            ),
+                            
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
                     // Modern app branding
                     Center(
                       child: Column(
@@ -138,7 +228,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                           children: [
                             // Form header
                             Text(
-                              'Create Account',
+                              'User Authentication',
                               style: GoogleFonts.montserrat(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w700,
@@ -148,7 +238,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'Please fill in the details to get started',
+                              'Please provide your information to continue',
                               style: GoogleFonts.montserrat(
                                 fontSize: 15,
                                 color: AppColors.textColor.withOpacity(0.6),
@@ -202,7 +292,7 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                             // Register button with animation
                             AnimatedButton(
                               onPressed: _handleRegistration,
-                              text: 'Create Account',
+                              text: 'Authenticate',
                               isLoading: _isLoading,
                               animation: _animationController,
                             ),
@@ -213,36 +303,18 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
                       ),
                     ),
                     
-                    // Already have account section
+                    // Remove the "Already have account" section and replace with a simple note
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Already have an account? ',
-                            style: GoogleFonts.montserrat(
-                              color: AppColors.textColor.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
+                      child: Center(
+                        child: Text(
+                          'Your information is secure and will only be used for emergency purposes',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.textColor.withOpacity(0.7),
+                            fontSize: 14,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              foregroundColor: AppColors.primaryColor,
-                            ),
-                            child: Text(
-                              'Sign In',
-                              style: GoogleFonts.montserrat(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],

@@ -14,7 +14,8 @@ class AnimatedInputField extends StatelessWidget {
   final int maxLines;
   final bool obscureText;
   final VoidCallback? onTogglePassword;
-  final bool enabled; // Add this line
+  final bool enabled;
+  final String? Function(String?)? validator; // Add custom validator parameter
 
   const AnimatedInputField({
     Key? key,
@@ -28,7 +29,8 @@ class AnimatedInputField extends StatelessWidget {
     this.maxLines = 1,
     this.obscureText = false,
     this.onTogglePassword,
-    this.enabled = true, // Add this line with default value
+    this.enabled = true,
+    this.validator, // Add validator to constructor
   }) : super(key: key);
 
   @override

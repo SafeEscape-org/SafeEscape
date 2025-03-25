@@ -77,6 +77,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
         child: Padding(
           padding: const EdgeInsets.only(right: 16, bottom: 16),
           child: Stack(
+            clipBehavior: Clip.none, // Allow widgets to overflow
             alignment: Alignment.bottomRight,
             children: [
               // Chat window - use ValueListenableBuilder to rebuild only when expanded state changes
@@ -86,7 +87,63 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
                   return AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: isExpanded 
-                      ? _buildChatWindow(chatWidth, chatHeight)
+                      ? Container(
+                          margin: const EdgeInsets.only(bottom: 70),
+                          width: chatWidth,
+                          height: chatHeight,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Chat Header
+                              _buildChatHeader(),
+                              
+                              // Chat Messages
+                              Expanded(
+                                child: ValueListenableBuilder(
+                                  valueListenable: _controller.messagesNotifier,
+                                  builder: (context, List<ChatMessage> messages, _) {
+                                    return _buildMessageList(chatWidth, messages);
+                                  },
+                                ),
+                              ),
+                              
+                              // Loading indicator
+                              ValueListenableBuilder<bool>(
+                                valueListenable: _controller.isLoadingNotifier,
+                                builder: (context, isLoading, _) {
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    height: isLoading ? 40 : 0,
+                                    child: isLoading
+                                      ? const Center(
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                  );
+                                },
+                              ),
+                              
+                              // Input Field
+                              _buildInputField(),
+                            ],
+                          ),
+                        )
                       : const SizedBox.shrink(),
                   );
                 },
@@ -170,8 +227,33 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
                 },
               ),
                 
-              // Chat Button - extract to reduce rebuilds
-              _buildChatButton(),
+              // Chat Button
+              Material(
+                color: AppColors.primaryColor,
+                borderRadius: BorderRadius.circular(30),
+                elevation: 5,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _controller.isExpandedNotifier,
+                  builder: (context, isExpanded, _) {
+                    return InkWell(
+                      onTap: () {
+                        _controller.isExpandedNotifier.value = !_controller.isExpandedNotifier.value;
+                      },
+                      borderRadius: BorderRadius.circular(30),
+                      child: SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: Center(
+                          child: Icon(
+                            isExpanded ? Icons.close : Icons.support_agent,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -188,18 +270,15 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
         elevation: 10,
         borderRadius: BorderRadius.circular(20),
         color: Colors.white,
-        child: Container(
+        child: SizedBox(
           width: width,
           height: height,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-          ),
           child: Column(
             children: [
               // Chat Header
               _buildChatHeader(),
               
-              // Chat Messages - use ValueListenableBuilder to rebuild only when messages change
+              // Chat Messages
               Expanded(
                 child: ValueListenableBuilder(
                   valueListenable: _controller.messagesNotifier,
@@ -209,7 +288,7 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
                 ),
               ),
               
-              // Loading indicator - use ValueListenableBuilder to rebuild only when loading state changes
+              // Loading indicator
               ValueListenableBuilder<bool>(
                 valueListenable: _controller.isLoadingNotifier,
                 builder: (context, isLoading, _) {
@@ -237,6 +316,38 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildChatButton() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _controller.isExpandedNotifier,
+      builder: (context, isExpanded, _) {
+        return Positioned(
+          bottom: 0,
+          right: 0,
+          child: Material(
+            color: AppColors.primaryColor,
+            borderRadius: BorderRadius.circular(30),
+            elevation: 5,
+            child: InkWell(
+              onTap: () {
+                _controller.isExpandedNotifier.value = !_controller.isExpandedNotifier.value;
+              },
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Center(
+                  child: Icon(
+                    isExpanded ? Icons.close : Icons.support_agent,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -434,29 +545,6 @@ class _ChatAssistanceState extends State<ChatAssistance> with SingleTickerProvid
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildChatButton() {
-    return Material(
-      color: AppColors.primaryColor,
-      borderRadius: BorderRadius.circular(30),
-      elevation: 5,
-      child: InkWell(
-        onTap: () {
-          _controller.isExpandedNotifier.value = !_controller.isExpandedNotifier.value;
-        },
-        child: const SizedBox(
-          width: 56,
-          height: 56,
-          child: Center(
-            child: Icon(
-              Icons.support_agent,
-              color: Colors.white,
-            ),
-          ),
-        ),
       ),
     );
   }
