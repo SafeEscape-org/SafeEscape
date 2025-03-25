@@ -34,11 +34,25 @@ android {
         minSdkVersion 23 
     }
 
+    // Add this signing config section before buildTypes
+    signingConfigs {
+        release {
+            keyAlias 'your-key-alias'
+            keyPassword 'your-key-password'
+            storeFile file('your-keystore-file.jks')
+            storePassword 'your-store-password'
+            // Or use environment variables or gradle.properties
+        }
+    }
+    
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Remove or comment out this line
+            // signingConfig signingConfigs.release
         }
     }
 }
