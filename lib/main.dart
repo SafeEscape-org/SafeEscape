@@ -22,7 +22,7 @@ import 'package:disaster_management/features/authentication/services/auth_servic
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:disaster_management/services/socket_service.dart';
-import 'package:disaster_management/services/notification_service.dart';
+
 
 // Add this function to run heavy tasks in the background
 Future<T> runHeavyTask<T>(Future<T> Function() task) {
@@ -104,7 +104,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: NotificationService().navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
