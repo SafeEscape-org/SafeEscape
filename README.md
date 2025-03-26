@@ -15,14 +15,27 @@ SafeEscape is a comprehensive disaster management application designed to help u
 ## 📱 App Screenshots
 
 <p align="center">
-  <img src="assets/readme/img1.jpg" width="200" alt="Home Screen"/>
-  <img src="assets/readme/img2.jpg" width="200" alt="Evacuation Routes"/>
-  <img src="assets/readme/img3.jpg" width="200" alt="Emergency Contacts"/>
+  <kbd>
+    <img src="assets/readme/img1.jpg" width="250" alt="Home Screen"/>
+  </kbd>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <kbd>
+    <img src="assets/readme/img2.jpg" width="250" alt="Evacuation Routes"/>
+  </kbd>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <kbd>
+    <img src="assets/readme/img3.jpg" width="250" alt="Emergency Contacts"/>
+  </kbd>
 </p>
 
 <p align="center">
-  <img src="assets/readme/img4.jpg" width="200" alt="Disaster Alerts"/>
-  <img src="assets/readme/img5.jpg" width="200" alt="Safety Tips"/>
+  <kbd>
+    <img src="assets/readme/img4.jpg" width="250" alt="Disaster Alerts"/>
+  </kbd>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <kbd>
+    <img src="assets/readme/img5.jpg" width="250" alt="Safety Tips"/>
+  </kbd>
 </p>
 
 ## 🌟 Key Features
