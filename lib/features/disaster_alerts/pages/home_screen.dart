@@ -36,7 +36,7 @@ class _CombinedHomeWeatherComponentState
   List<Map<String, dynamic>> _activeDisasters = [];
   
   // Add SocketService instance
-  final SocketService _socketService = SocketService();
+  // final SocketService _socketService = SocketService();
 
   // Add a flag to prevent multiple fetches
   bool _isFetching = false;
@@ -59,23 +59,23 @@ class _CombinedHomeWeatherComponentState
   }
   
   // Add method to connect to socket and register user
-  void _connectAndRegisterWithSocket() {
-    debugPrint('Connecting to socket server from home screen...');
+  // void _connectAndRegisterWithSocket() {
+  //   debugPrint('Connecting to socket server from home screen...');
     
-    // First connect to the socket
-    _socketService.connectSocket();
+  //   // First connect to the socket
+  //   _socketService.connectSocket();
     
-    // Then register the user after a short delay to ensure connection is established
-    Future.delayed(const Duration(seconds: 2), () {
-      debugPrint('Registering user with socket server...');
-      _socketService.registerUser();
+  //   // Then register the user after a short delay to ensure connection is established
+  //   Future.delayed(const Duration(seconds: 2), () {
+  //     debugPrint('Registering user with socket server...');
+  //     _socketService.registerUser();
       
-      // Request active disasters after registration
-      Future.delayed(const Duration(seconds: 1), () {
-        _socketService.requestActiveDisasters();
-      });
-    });
-  }
+  //     // Request active disasters after registration
+  //     Future.delayed(const Duration(seconds: 1), () {
+  //       _socketService.requestActiveDisasters();
+  //     });
+  //   });
+  // }
 
   @override
   void dispose() {
@@ -91,7 +91,7 @@ class _CombinedHomeWeatherComponentState
         _fetchLocationData();
         
         // Reconnect to socket when app is resumed
-        _connectAndRegisterWithSocket();
+        // _connectAndRegisterWithSocket();
       }
     }
   }

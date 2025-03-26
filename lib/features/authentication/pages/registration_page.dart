@@ -106,7 +106,12 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
     setState(() => _isLoading = true);
 
     try {
-      // First, register the user with Firebase Authentication
+      // Add reCAPTCHA verification
+      await FirebaseAuth.instance.setSettings(
+        appVerificationDisabledForTesting: false, // Set to true only for testing
+      );
+      
+      // Register the user with Firebase Authentication
       print('Attempting to create user with email: ${email.trim()}');
       final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -119,90 +124,19 @@ class _RegistrationPageState extends State<RegistrationPage> with SingleTickerPr
       // Print debug information
       print('User created with UID: ${userCredential.user!.uid}');
       
-      // Create user data map
-      final userData = {
-        'name': name.trim(),
-        'email': email.trim(),
-        'phone': phone.trim(),
-        'gender': gender,
-        'emergencyContacts': [],
-        'location': {
-          'latitude': latitude,
-          'longitude': longitude,
-          'address': address ?? '',
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastActive': FieldValue.serverTimestamp(),
-      };
-      
-      print('Attempting to create Firestore document with data: $userData');
-      
-      try {
-        // Now, manually create the user document in Firestore with error handling
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set(userData)
-            .timeout(const Duration(seconds: 15)); // Add timeout
-        
-        print('Firestore document created successfully');
-        
-        // Verify the document was created
-        final docSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .get();
-            
-        if (!docSnapshot.exists) {
-          print('ERROR: Document was not created in Firestore');
-          throw Exception('Failed to create user document in Firestore');
-        } else {
-          print('Document verified in Firestore: ${docSnapshot.data()}');
-          
-          // Navigate to the home screen or wherever you want to go after registration
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
-        }
-      } catch (firestoreError) {
-        print('Firestore error: $firestoreError');
-        
-        // Try an alternative approach with a different collection reference
-        try {
-          print('Trying alternative Firestore approach...');
-          final db = FirebaseFirestore.instance;
-          await db.collection('users').doc(userCredential.user!.uid).set(userData);
-          
-          print('Alternative Firestore approach succeeded');
-          
-          // Navigate to the home screen
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
-        } catch (alternativeError) {
-          print('Alternative Firestore approach failed: $alternativeError');
-          throw Exception('Failed to create user document: $alternativeError');
-        }
+      // Navigate to the home screen
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       print('Registration error: $e');
+      String errorMessage = 'Registration failed. Please try again.';
+      
+   
+      
       if (mounted) {
-        // Show modern error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Registration failed: ${e.toString()}',
-              style: GoogleFonts.montserrat(),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+       
+
       }
     } finally {
       if (mounted) {

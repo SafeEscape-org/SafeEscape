@@ -76,7 +76,7 @@ class SocketService extends ChangeNotifier {
     // Run notification in background to avoid UI blocking
     Future.microtask(() {
       try {
-        // Uncomment this to actually show notifications
+        // Uncomment this to actually show notifications and alets real time data vial socket events
         
       } catch (e) {
         debugPrint('Error showing notification: $e');

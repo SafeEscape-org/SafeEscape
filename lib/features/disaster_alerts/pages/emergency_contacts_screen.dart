@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
-import 'package:disaster_management/core/constants/api_constants.dart';
 import 'package:disaster_management/features/disaster_alerts/constants/colors.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/add_contact_form.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/emergency_services_list.dart';
@@ -40,30 +39,17 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     });
 
     try {
-      // Changed from POST to GET request
-      final response = await http.get(
-        Uri.parse('http://${ApiConstants.socketServerIP}:${ApiConstants.socketServerPort}/api/users/$_userId/emergency-contact'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      );
-
-      print('Fetch contacts response status: ${response.statusCode}');
-      print('Fetch contacts response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          _contacts = List<Map<String, dynamic>>.from(data);
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Failed to load contacts: ${response.statusCode} - ${response.body}';
-          _isLoading = false;
-        });
-      }
+      // Get contacts from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final contactsJson = prefs.getString('emergency_contacts_$_userId') ?? '[]';
+      
+      print('Fetched contacts from local storage: $contactsJson');
+      
+      final List<dynamic> data = json.decode(contactsJson);
+      setState(() {
+        _contacts = List<Map<String, dynamic>>.from(data);
+        _isLoading = false;
+      });
     } catch (e) {
       print('Error fetching contacts: $e');
       setState(() {
@@ -97,59 +83,43 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
       print('Adding contact for user: $currentUserId');
       print('Contact data: ${json.encode(contactData)}');
       
-      // Format the data exactly as expected by the API
+      // Format the data - remove any call-related fields
       final formattedData = {
         "name": contactData['name'],
         "phone": contactData['phone'],
         "relationship": contactData['relationship']
       };
       
-      // Use the current user ID from Firebase
-      final response = await http.post(
-        Uri.parse('http://${ApiConstants.socketServerIP}:${ApiConstants.socketServerPort}/api/users/$currentUserId/emergency-contact'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(formattedData),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        // Close the bottom sheet if it's still open
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-        
-        // Refresh contacts
-        _fetchContacts();
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Contact added successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        setState(() {
-          _isSubmitting = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Failed to add contact: ${response.statusCode} - ${response.body}';
-          _isSubmitting = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add contact: ${response.statusCode}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // Get existing contacts
+      final prefs = await SharedPreferences.getInstance();
+      final contactsJson = prefs.getString('emergency_contacts_$currentUserId') ?? '[]';
+      final List<dynamic> existingContacts = json.decode(contactsJson);
+      
+      // Add new contact
+      existingContacts.add(formattedData);
+      
+      // Save updated contacts
+      await prefs.setString('emergency_contacts_$currentUserId', json.encode(existingContacts));
+      
+      // Close the bottom sheet if it's still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
       }
+      
+      // Refresh contacts
+      _fetchContacts();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact added successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      setState(() {
+        _isSubmitting = false;
+      });
     } catch (e) {
       print('Error adding contact: $e');
       setState(() {
@@ -196,30 +166,29 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     });
 
     try {
-      // URL encode the phone number to handle special characters like +
-      final encodedPhone = Uri.encodeComponent(phoneNumber);
+      // Get existing contacts
+      final prefs = await SharedPreferences.getInstance();
+      final contactsJson = prefs.getString('emergency_contacts_$_userId') ?? '[]';
+      final List<dynamic> existingContacts = json.decode(contactsJson);
       
-      final response = await http.delete(
-        Uri.parse('http://${ApiConstants.socketServerIP}:${ApiConstants.socketServerPort}/api/users/$_userId/emergency-contact/$encodedPhone'),
-        headers: {'Content-Type': 'application/json'},
+      // Remove contact with matching phone number
+      final updatedContacts = existingContacts.where((contact) => 
+        contact['phone'] != phoneNumber
+      ).toList();
+      
+      // Save updated contacts
+      await prefs.setString('emergency_contacts_$_userId', json.encode(updatedContacts));
+      
+      // Refresh contacts
+      _fetchContacts();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Contact removed successfully'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        _fetchContacts();
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Contact removed successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        setState(() {
-          _error = 'Failed to remove contact: ${response.statusCode}';
-          _isLoading = false;
-        });
-      }
     } catch (e) {
       setState(() {
         _error = 'Error removing contact: $e';

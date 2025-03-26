@@ -190,11 +190,35 @@ class _RegistrationFormState extends State<RegistrationForm> {
   void _submitForm() {
     if (!_formKey.currentState!.validate()) return;
     
+    // Validate phone number format
+    String phoneNumber = _phoneController.text.trim();
+    // Remove any non-digit characters from phone
+    phoneNumber = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Ensure we have valid location data
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select your location',
+            style: GoogleFonts.montserrat(),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+    
     widget.onRegister(
-      name: _nameController.text,
-      email: _emailController.text,
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
       password: _passwordController.text,
-      phone: _phoneController.text,
+      phone: phoneNumber,
       gender: _gender,
       latitude: _latitude,
       longitude: _longitude,

@@ -308,8 +308,8 @@ class ContactsList extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.phone, size: 14, color: EvacuationColors.subtitleColor),
-                      const SizedBox(width: 4),
+                      // Icon(Icons.phone, size: 14, color: EvacuationColors.subtitleColor),
+                      // const SizedBox(width: 4),
                       Text(
                         contact['phone'],
                         style: TextStyle(
@@ -338,25 +338,7 @@ class ContactsList extends StatelessWidget {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.call, color: Colors.green, size: 20),
-                      tooltip: 'Call contact',
-                      onPressed: () {
-                        // Handle call action
-                      },
-                      constraints: const BoxConstraints(
-                        minWidth: 36,
-                        minHeight: 36,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  // Call icon removed
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
