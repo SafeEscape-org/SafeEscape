@@ -20,7 +20,7 @@ class ApiConstants {
   // Socket Server Configuration
   // If running on emulator, use 10.0.2.2 to connect to host machine
   // If running on physical device, use the actual server IP
-  static const String socketServerIP = '192.168.0.115'; // Your server IP
+  static const String socketServerIP = '172.16.18.240'; // Your server IP
   static const int socketServerPort = 5000;
   static const int socketTimeoutMs = 20000;
   

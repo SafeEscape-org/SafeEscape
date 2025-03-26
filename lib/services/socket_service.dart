@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
-import 'package:disaster_management/services/notification_service.dart';
+
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,7 +24,7 @@ class SocketService extends ChangeNotifier {
   bool _shouldNotifyListeners = true;
   
   // Use the notification service
-  final NotificationService _notificationService = NotificationService();
+
 
   SocketService._internal() {
     _initializeSocket();
@@ -76,8 +76,8 @@ class SocketService extends ChangeNotifier {
     // Run notification in background to avoid UI blocking
     Future.microtask(() {
       try {
-        // Uncomment this to actually show notifications
-        _notificationService.showNotification(title, message, alertType);
+        // Uncomment this to actually show notifications and alets real time data vial socket events
+        
       } catch (e) {
         debugPrint('Error showing notification: $e');
       }

@@ -5,7 +5,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/current_wea
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/recent_earthquakes_card.dart';
 import 'package:disaster_management/services/location_service.dart';
-import 'package:disaster_management/services/notification_service.dart';
+import 'package:disaster_management/services/socket_service.dart'; // Add this import
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +34,10 @@ class _CombinedHomeWeatherComponentState
   String _locationName = "Mumbai, India";
   Map<String, dynamic>? _locationData;
   List<Map<String, dynamic>> _activeDisasters = [];
-  final NotificationService _notificationService = NotificationService();
+  
+  // Add SocketService instance
+  // final SocketService _socketService = SocketService();
+
   // Add a flag to prevent multiple fetches
   bool _isFetching = false;
   // Add the DisasterService field at the class level
@@ -43,22 +46,39 @@ class _CombinedHomeWeatherComponentState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    // Use post-frame callback to avoid UI jank during initialization
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Connect to socket and register user
+      // _connectAndRegisterWithSocket();
+      
+      // Fetch location data after UI is built
       _fetchLocationData();
     });
     
-    // Register this screen as the active notification screen
-    _notificationService.setActiveScreen(true);
+    WidgetsBinding.instance.addObserver(this);
   }
-
   
+  // Add method to connect to socket and register user
+  // void _connectAndRegisterWithSocket() {
+  //   debugPrint('Connecting to socket server from home screen...');
+    
+  //   // First connect to the socket
+  //   _socketService.connectSocket();
+    
+  //   // Then register the user after a short delay to ensure connection is established
+  //   Future.delayed(const Duration(seconds: 2), () {
+  //     debugPrint('Registering user with socket server...');
+  //     _socketService.registerUser();
+      
+  //     // Request active disasters after registration
+  //     Future.delayed(const Duration(seconds: 1), () {
+  //       _socketService.requestActiveDisasters();
+  //     });
+  //   });
+  // }
 
   @override
   void dispose() {
-    // Unregister this screen when it's disposed
-    _notificationService.setActiveScreen(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -69,12 +89,10 @@ class _CombinedHomeWeatherComponentState
       // Only fetch if we're not already fetching and it's been at least 5 minutes
       if (!_isFetching && mounted) {
         _fetchLocationData();
+        
+        // Reconnect to socket when app is resumed
+        // _connectAndRegisterWithSocket();
       }
-      // Re-register as active when app is resumed
-      _notificationService.setActiveScreen(true);
-    } else if (state == AppLifecycleState.paused) {
-      // Unregister when app is paused
-      _notificationService.setActiveScreen(false);
     }
   }
 
@@ -82,40 +100,38 @@ class _CombinedHomeWeatherComponentState
     // Prevent multiple simultaneous fetches
     if (_isFetching) return;
     _isFetching = true;
-    
+
     // Use a single setState call at the beginning
     if (mounted) {
       setState(() {
         _isLoading = true;
       });
     }
-    
+
     try {
       // Wrap in a microtask to avoid blocking the main thread
       final location = await Future(() async {
         return await LocationService.getCurrentLocation(context);
       });
-      
+
       if (!mounted) {
         _isFetching = false;
         return;
       }
-      
+
       String? address;
       if (location != null) {
         // Wrap in a microtask to avoid blocking the main thread
         address = await Future(() async {
           return await LocationService.getAddressFromCoordinates(
-            location['latitude'], 
-            location['longitude']
-          );
+              location['latitude'], location['longitude']);
         });
-        
+
         if (!mounted) {
           _isFetching = false;
           return;
         }
-        
+
         // Batch state updates in a single setState call
         setState(() {
           _locationName = address ?? "Unknown Location";
@@ -131,7 +147,7 @@ class _CombinedHomeWeatherComponentState
           _isFetching = false;
           return;
         }
-        
+
         // Batch state updates
         setState(() {
           _locationName = "Mumbai, India";
@@ -143,17 +159,17 @@ class _CombinedHomeWeatherComponentState
           _isLoading = false;
         });
       }
-      
+
       // Fetch disaster data after location is determined
       await _fetchDisasterData();
     } catch (e) {
       debugPrint('Error fetching location: $e');
-      
+
       if (!mounted) {
         _isFetching = false;
         return;
       }
-      
+
       setState(() {
         _locationName = "Mumbai, India";
         _locationData = {
@@ -163,26 +179,26 @@ class _CombinedHomeWeatherComponentState
         };
         _isLoading = false;
       });
-      
+
       // Fetch disaster data with default location
       await _fetchDisasterData();
     } finally {
       _isFetching = false;
     }
   }
-  
+
   // Optimized method to fetch disaster data
   Future<void> _fetchDisasterData() async {
     if (_locationData == null || !mounted) return;
-    
+
     setState(() {
       _isLoadingDisasters = true;
     });
-    
+
     try {
       // Use the service to fetch data
       final disasters = await _disasterService.fetchDisasterData(_locationData);
-      
+
       // Only update state if widget is still mounted
       if (mounted) {
         setState(() {
@@ -226,7 +242,8 @@ class _CombinedHomeWeatherComponentState
               ),
               slivers: [
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       _buildOptimizedContent(),
@@ -238,7 +255,7 @@ class _CombinedHomeWeatherComponentState
             ),
           ),
         ),
-        
+
         // Add the ChatAssistance widget
         const Positioned(
           right: 16,
@@ -248,6 +265,7 @@ class _CombinedHomeWeatherComponentState
       ],
     );
   }
+
   // Create a more optimized content builder
   Widget _buildOptimizedContent() {
     return Column(
@@ -255,51 +273,51 @@ class _CombinedHomeWeatherComponentState
       children: [
         // Current Weather Section
         _buildSectionTitle('Current Weather'),
-        _isLoading 
-          ? _buildFasterLoading(height: 180)
-          : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
-        
+        _isLoading
+            ? _buildFasterLoading(height: 180)
+            : CurrentWeatherCard(city: _locationData?['city'] ?? 'Mumbai'),
+
         const SizedBox(height: 24),
-        
+
         // Active Alerts Section
         _buildSectionTitle('Active Alerts'),
         _isLoading || _isLoadingDisasters
-          ? Column(
-              children: [
-                _buildFasterLoading(height: 120),
-                const SizedBox(height: 12),
-                _buildFasterLoading(height: 120),
-              ],
-            )
-          : _buildActiveAlerts(),
-        
+            ? Column(
+                children: [
+                  _buildFasterLoading(height: 120),
+                  const SizedBox(height: 12),
+                  _buildFasterLoading(height: 120),
+                ],
+              )
+            : _buildActiveAlerts(),
+
         const SizedBox(height: 24),
-        
+
         // Recent Earthquakes Section - Only use RepaintBoundary where truly needed
         _buildSectionTitle('Recent Earthquakes'),
-        _isLoading 
-          ? _buildFasterLoading(height: 200)
-          : const RecentEarthquakesCard(),
-        
+        _isLoading
+            ? _buildFasterLoading(height: 200)
+            : const RecentEarthquakesCard(),
+
         const SizedBox(height: 24),
-        
+
         // Disaster Declarations Section
         _buildSectionTitle('Disaster Declarations'),
         _isLoading || _isLoadingDisasters
-          ? Column(
-              children: [
-                _buildFasterLoading(height: 100),
-                const SizedBox(height: 12),
-                _buildFasterLoading(height: 100),
-                const SizedBox(height: 12),
-                _buildFasterLoading(height: 100),
-              ],
-            )
-          : _buildDisasterDeclarations(),
+            ? Column(
+                children: [
+                  _buildFasterLoading(height: 100),
+                  const SizedBox(height: 12),
+                  _buildFasterLoading(height: 100),
+                  const SizedBox(height: 12),
+                  _buildFasterLoading(height: 100),
+                ],
+              )
+            : _buildDisasterDeclarations(),
       ],
     );
   }
-  
+
   // Replace with a more efficient loading indicator
   Widget _buildFasterLoading({required double height}) {
     return Container(
@@ -323,9 +341,7 @@ class _CombinedHomeWeatherComponentState
       ),
     );
   }
-  
-  
-  
+
   // Add method to build active alerts from API data
   Widget _buildActiveAlerts() {
     if (_activeDisasters.isEmpty) {
@@ -346,16 +362,16 @@ class _CombinedHomeWeatherComponentState
         ),
       );
     }
-    
+
     // Filter high severity disasters for alerts
     final highSeverityDisasters = _activeDisasters
-        .where((disaster) => 
-            disaster['severity'] == 'high' || 
+        .where((disaster) =>
+            disaster['severity'] == 'high' ||
             disaster['severity'] == 'severe' ||
             disaster['severity'] == 'medium')
         .take(3)
         .toList();
-    
+
     if (highSeverityDisasters.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -374,18 +390,18 @@ class _CombinedHomeWeatherComponentState
         ),
       );
     }
-    
+
     return Column(
       children: highSeverityDisasters.map((disaster) {
         final Color alertColor = _getAlertColor(disaster['type']);
         final String timeAgo = _getTimeAgo(disaster['timestamp']);
-        
+
         // Truncate description to keep card size consistent
         String description = disaster['description'] ?? '';
         if (description.length > 100) {
           description = description.substring(0, 100) + '...';
         }
-        
+
         return AlertCard(
           title: disaster['title'],
           description: description,
@@ -397,7 +413,7 @@ class _CombinedHomeWeatherComponentState
       }).toList(),
     );
   }
-  
+
   // Add method to build disaster declarations from API data
   // Add method to build disaster declarations from API data
   Widget _buildDisasterDeclarations() {
@@ -419,11 +435,11 @@ class _CombinedHomeWeatherComponentState
         ),
       );
     }
-    
+
     // Limit to only 3 disaster declarations to improve performance
     final displayedDisasters = _activeDisasters.take(3).toList();
     final hasMoreDisasters = _activeDisasters.length > 3;
-    
+
     return Column(
       children: [
         // Use a more efficient approach than mapping
@@ -432,13 +448,16 @@ class _CombinedHomeWeatherComponentState
             padding: const EdgeInsets.only(bottom: 12),
             child: DisasterDeclarationCard(
               title: displayedDisasters[i]['title'] ?? 'Unknown Disaster',
-              type: _capitalizeFirstLetter(displayedDisasters[i]['type'] ?? 'Unknown'),
-              location: '${displayedDisasters[i]['location']['city'] ?? 'Unknown'}, ${displayedDisasters[i]['location']['state'] ?? ''}',
+              type: _capitalizeFirstLetter(
+                  displayedDisasters[i]['type'] ?? 'Unknown'),
+              location:
+                  '${displayedDisasters[i]['location']['city'] ?? 'Unknown'}, ${displayedDisasters[i]['location']['state'] ?? ''}',
               date: _formatDate(displayedDisasters[i]['timestamp']),
-              status: displayedDisasters[i]['active'] == true ? 'Active' : 'Closed',
+              status:
+                  displayedDisasters[i]['active'] == true ? 'Active' : 'Closed',
             ),
           ),
-        
+
         if (hasMoreDisasters)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
@@ -473,7 +492,7 @@ class _CombinedHomeWeatherComponentState
       ],
     );
   }
-  
+
   // Helper method to get alert color based on type
   Color _getAlertColor(String type) {
     switch (type.toLowerCase()) {
@@ -493,13 +512,13 @@ class _CombinedHomeWeatherComponentState
         return Colors.teal;
     }
   }
-  
+
   // Helper method to format timestamp to relative time
   String _getTimeAgo(String timestamp) {
     final DateTime now = DateTime.now();
     final DateTime date = DateTime.parse(timestamp);
     final Duration difference = now.difference(date);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
     } else if (difference.inHours > 0) {
@@ -510,19 +529,19 @@ class _CombinedHomeWeatherComponentState
       return 'Just now';
     }
   }
-  
+
   // Helper method to format date
   String _formatDate(String timestamp) {
     final DateTime date = DateTime.parse(timestamp);
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
-  
+
   // Helper method to capitalize first letter
   String _capitalizeFirstLetter(String text) {
     if (text.isEmpty) return '';
     return text[0].toUpperCase() + text.substring(1);
   }
-  
+
   // Helper method to capitalize severity
   String _capitalizeSeverity(String severity) {
     switch (severity.toLowerCase()) {
@@ -538,7 +557,7 @@ class _CombinedHomeWeatherComponentState
         return _capitalizeFirstLetter(severity);
     }
   }
-  
+
   // Add this new shimmer loading widget
   // Replace the shimmer loading widget with a simpler loading indicator
 // Replace the complex loading widget with a simpler one
@@ -564,7 +583,7 @@ class _CombinedHomeWeatherComponentState
       ),
     );
   }
-  
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
