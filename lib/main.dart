@@ -20,8 +20,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/services/auth_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:provider/provider.dart';
-import 'package:disaster_management/services/socket_service.dart';
 
 
 // Add this function to run heavy tasks in the background
@@ -74,17 +72,8 @@ void main() async {
   // Remove splash screen
   FlutterNativeSplash.remove();
   
-  // Start the app
-  runApp(
-    MultiProvider(
-      providers: [
-        Provider<SocketService>(
-          create: (_) => SocketService(),
-        ),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  // Start the app - removed MultiProvider
+  runApp(const MyApp());
   
   // Run remaining initialization tasks in parallel after app has started
   Future.microtask(() async {
