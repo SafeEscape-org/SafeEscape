@@ -30,7 +30,9 @@ SafeEscape is a comprehensive disaster management application designed to help u
       <td align="center"><img src="assets/readme/img6.jpg" width="250" alt="AI Assistant"/><br><b>AI Assistant</b></td>
     </tr>
     <tr>
-      <td align="center" colspan="3"><img src="assets/readme/img7.jpg" width="250" alt="User Profile"/><br><b>User Profile</b></td>
+      <td align="center"><img src="assets/readme/img7.jpg" width="250" alt="User Profile"/><br><b>User Profile</b></td>
+      <td align="center"><img src="assets/readme/img8.jpg" width="250" alt="Disaster Map"/><br><b>Disaster Map</b></td>
+      <td align="center"><img src="assets/readme/img9.jpg" width="250" alt="Emergency Resources"/><br><b>Emergency Resources</b></td>
     </tr>
   </table>
 </div>
