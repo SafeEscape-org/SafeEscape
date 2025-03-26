@@ -23,9 +23,6 @@ class SocketService extends ChangeNotifier {
   // Add a flag to control notifications
   bool _shouldNotifyListeners = true;
   
-  // Use the notification service
-
-
   SocketService._internal() {
     _initializeSocket();
   }
@@ -70,6 +67,7 @@ class SocketService extends ChangeNotifier {
       }
     });
   }
+  //this will be socket emmiter via transports and 
 
   // Replace the _showNotification method with this optimized version
   void _showNotification(String title, String message, String alertType) {
