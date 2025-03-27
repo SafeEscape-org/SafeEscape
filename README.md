@@ -13,7 +13,7 @@
 
 ## 🏆 Hackathon Submission
 
-SafeEscape is a comprehensive disaster management application designed to help users prepare for, respond to, and recover from natural and man-made disasters. This project was developed as part of the [Hackathon Name] hackathon.
+SafeEscape is a comprehensive disaster management application designed to help users prepare for, respond to, and recover from natural and man-made disasters. This project was developed as part of the GDG SOLUTION CHALLENGE hackathon.
 
 ## 📱 App Screenshots
 
