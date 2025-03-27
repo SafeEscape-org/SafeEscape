@@ -151,6 +151,10 @@ SafeEscape follows a clean architecture approach with a focus on separation of c
   </tr>
 </table>
 
+## 🔗 Additional Resources
+
+- [SafeEscape Backend Repository](https://github.com/amanmogal/SafeEscape-backend)
+
 ## 🚀 Getting Started
 
 ### Prerequisites
