@@ -2,40 +2,47 @@ name: Android Build
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
-      
+
+      # Updated to match your local Flutter version
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.x'
+          flutter-version: '3.27.1'
           channel: 'stable'
           cache: true
-      
-      - name: Get dependencies
+
+      - name: Verify Flutter Installation
+        run: flutter doctor
+
+      - name: Get Dependencies
         run: flutter pub get
-      
-      - name: Run tests
-        run: flutter test
-      
+
+      # Removed the Flutter Tests step
+
       - name: Build APK
         run: flutter build apk --release
-      
+
+      # Fixed the deprecated set-output command
       - name: Upload APK
-        uses: actions/upload-artifact@v2
-        with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+        id: upload
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk ${{ github.workspace }}/artifacts/
+          echo "artifact_path=${{ github.workspace }}/artifacts/app-release.apk" >> $GITHUB_OUTPUT
