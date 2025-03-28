@@ -20,10 +20,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      # Updated to match your local Flutter version
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.x'
+          flutter-version: '3.27.1'
           channel: 'stable'
           cache: true
 
@@ -39,9 +40,10 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # Changed from actions/upload-artifact@v3 to a direct upload approach
+      # Fixed the deprecated set-output command
       - name: Upload APK
+        id: upload
         run: |
           mkdir -p ${{ github.workspace }}/artifacts
           cp build/app/outputs/flutter-apk/app-release.apk ${{ github.workspace }}/artifacts/
-          echo "::set-output name=artifact_path::${{ github.workspace }}/artifacts/app-release.apk"
+          echo "artifact_path=${{ github.workspace }}/artifacts/app-release.apk" >> $GITHUB_OUTPUT
