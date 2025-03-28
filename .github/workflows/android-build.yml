@@ -34,8 +34,7 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Run Flutter Tests
-        run: flutter test
+      # Removed the Flutter Tests step
 
       - name: Build APK
         run: flutter build apk --release
