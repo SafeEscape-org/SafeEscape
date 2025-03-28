@@ -39,10 +39,9 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # Fixed the deprecated set-output command
-      - name: Upload APK
-        id: upload
-        run: |
-          mkdir -p ${{ github.workspace }}/artifacts
-          cp build/app/outputs/flutter-apk/app-release.apk ${{ github.workspace }}/artifacts/
-          echo "artifact_path=${{ github.workspace }}/artifacts/app-release.apk" >> $GITHUB_OUTPUT
+      # Replace the current upload approach with the direct artifact upload
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
