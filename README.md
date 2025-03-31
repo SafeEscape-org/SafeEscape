@@ -186,4 +186,4 @@ SafeEscape follows a clean architecture approach with a focus on separation of c
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/disaster_management.git
+   git clone https://github.com/SafeEscape-org/SafeEscape.git
