@@ -144,11 +144,11 @@ SafeEscape follows a clean architecture approach with a focus on separation of c
     <td width="33%"><b>State Management</b><br>Provider</td>
     <td width="33%"><b>Notifications</b><br>Firebase Cloud Messaging</td>
   </tr>
-  <tr>
-    <td width="33%"><b>AI & ML</b><br>TensorFlow Lite, Custom models</td>
+ <tr>
     <td width="33%"><b>Real-time Communication</b><br>WebSockets, Firebase Realtime DB</td>
     <td width="33%"><b>Analytics</b><br>Firebase Analytics</td>
-  </tr>
+</tr>
+
 </table>
 
 ## 🔗 Additional Resources
