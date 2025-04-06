@@ -17,18 +17,16 @@ class ApiConstants {
   static const String firebaseIOSAppId = '1:841617839404:ios:ecd856ac48e978983c4889';
   static const String firebaseIOSBundleId = 'com.example.disasterManagement';
   
-  // Socket Server Configuration
-  // If running on emulator, use 10.0.2.2 to connect to host machine
-  // If running on physical device, use the actual server IP
-  static const String socketServerIP = '172.16.18.240'; // Your server IP
-  static const int socketServerPort = 5000;
+  // Backend Server Configuration
+  // Updated to use hosted backend URL
+  static const String backendBaseUrl = 'https://safescape-backend-167333024201.asia-south1.run.app';
   static const int socketTimeoutMs = 20000;
   
   // Get the full socket server URL
-  static String get socketServerUrl => 'http://$socketServerIP:$socketServerPort';
+  static String get socketServerUrl => backendBaseUrl;
   
   // Base URL for all API calls
-  static String get baseUrl => socketServerUrl;
+  static String get baseUrl => backendBaseUrl;
   
   // Weather API - Update to match the correct endpoint
   static String get weatherApiBaseUrl => '$baseUrl/api/alerts/weather';
