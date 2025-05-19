@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
 import 'package:disaster_management/features/disaster_alerts/constants/colors.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/add_contact_form.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/emergency_services_list.dart';
