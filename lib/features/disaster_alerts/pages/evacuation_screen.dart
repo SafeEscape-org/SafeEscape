@@ -7,7 +7,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/expanded_ma
 import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -41,6 +41,26 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   String? _nextPageToken;
   final ScrollController _placesScrollController = ScrollController();
   List<EvacuationPlace> _allPlaces = [];
+  bool _isMapExpanded = false;
+  
+  // Helper methods for route information
+  String _calculateRouteDistance() {
+    // In a real app, this would calculate the actual distance
+    // For now, return a placeholder value
+    return '3.2';
+  }
+  
+  String _calculateRouteDuration() {
+    // In a real app, this would calculate the actual duration
+    // For now, return a placeholder value
+    return '12';
+  }
+  
+  void _clearRoute() {
+    setState(() {
+      _polylines.clear();
+    });
+  }
 
   @override
   void initState() {
@@ -278,9 +298,6 @@ Future<void> _fetchNearbyPlaces() async {
       case PlaceType.fire:
         hue = BitmapDescriptor.hueOrange;
         break;
-      case PlaceType.hospital:
-        hue = BitmapDescriptor.hueGreen;
-        break;
       case PlaceType.shelter:
         hue = BitmapDescriptor.hueViolet;
         break;
@@ -291,11 +308,167 @@ Future<void> _fetchNearbyPlaces() async {
     return BitmapDescriptor.defaultMarkerWithHue(hue);
   }
 
+  void _toggleMapExpansion() {
+    setState(() {
+      _isMapExpanded = !_isMapExpanded;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
+    // If map is expanded, show full-screen map
+    if (_isMapExpanded) {
+      return Scaffold(
+        body: Stack(
+          children: [
+            // Full-screen map - use entire screen
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+              child: _currentPosition == null
+                  ? _buildLoadingIndicator()
+                  : EvacuationMap(
+                      currentPosition: _currentPosition!,
+                      places: _places,
+                      polylines: _polylines,
+                      markers: _markers,
+                      onMapCreated: (controller) {
+                        mapController = controller;
+                      },
+                    ),
+            ),
+            
+            // Back button
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _toggleMapExpansion,
+                ),
+              ),
+            ),
+            
+            // Add a floating route info panel at the bottom
+            if (_polylines.isNotEmpty)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 24,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: EvacuationColors.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.directions,
+                              color: EvacuationColors.primaryColor,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Route to Destination',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: EvacuationColors.textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_calculateRouteDistance()} km • ${_calculateRouteDuration()} min',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: EvacuationColors.subtitleColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: _clearRoute,
+                            color: Colors.red[400],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                // Start navigation logic
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Navigation started'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.navigation),
+                              label: const Text('Start Navigation'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: EvacuationColors.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    
+    // Regular view with small map
     return Stack(
       children: [
         AppScaffold(
@@ -367,16 +540,19 @@ Future<void> _fetchNearbyPlaces() async {
                               ? _buildPermissionDeniedMessage()
                               : _currentPosition == null
                                   ? _buildLoadingIndicator()
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: EvacuationMap(
-                                        currentPosition: _currentPosition!,
-                                        places: _places,
-                                        polylines: _polylines,
-                                        markers: _markers, // Pass the markers
-                                        onMapCreated: (controller) {
-                                          mapController = controller;
-                                        },
+                                  : GestureDetector(
+                                      onTap: _toggleMapExpansion,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: EvacuationMap(
+                                          currentPosition: _currentPosition!,
+                                          places: _places,
+                                          polylines: _polylines,
+                                          markers: _markers, // Pass the markers
+                                          onMapCreated: (controller) {
+                                            mapController = controller;
+                                          },
+                                        ),
                                       ),
                                     ),
                           // Map controls remain the same
@@ -546,47 +722,7 @@ Future<void> _fetchNearbyPlaces() async {
   }
 
   void _showExpandedMap() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 1.0,
-        minChildSize: 0.5,
-        builder: (_, controller) => Container(
-          decoration: BoxDecoration(
-            color: EvacuationColors.cardBackground,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: EvacuationColors.textColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
-                  child: EvacuationMap(
-                    currentPosition: _currentPosition!,
-                    places: _places,
-                    polylines: _polylines,
-                    markers: _markers, // Pass the markers
-                    onMapCreated: (controller) => mapController = controller,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    _toggleMapExpansion();
   }
 
   Widget _buildMapButton({
@@ -1135,7 +1271,15 @@ Future<void> _fetchNearbyPlaces() async {
           _polylines.clear();
           _polylines.add(routePolyline);
         });
-// Remove the _getBoundsForRoute method and update where it's used
+        
+        // If map is expanded, show the route info panel
+        if (_isMapExpanded) {
+          // Already showing the route info panel via the if condition in the UI
+        } else {
+          // Consider expanding the map to show the route
+          _toggleMapExpansion();
+        }
+        
         mapController.animateCamera(
           CameraUpdate.newLatLngBounds(
             MapBoundsCalculator.getRouteLatLngBounds(polylinePoints),

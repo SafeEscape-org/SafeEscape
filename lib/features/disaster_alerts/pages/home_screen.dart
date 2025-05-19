@@ -1,5 +1,5 @@
 import 'package:disaster_management/core/constants/app_colors.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/side_navigation.dart';
+import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/alert_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/current_weather_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
@@ -58,24 +58,6 @@ class _CombinedHomeWeatherComponentState
     WidgetsBinding.instance.addObserver(this);
   }
   
-  // Add method to connect to socket and register user
-  // void _connectAndRegisterWithSocket() {
-  //   debugPrint('Connecting to socket server from home screen...');
-    
-  //   // First connect to the socket
-  //   _socketService.connectSocket();
-    
-  //   // Then register the user after a short delay to ensure connection is established
-  //   Future.delayed(const Duration(seconds: 2), () {
-  //     debugPrint('Registering user with socket server...');
-  //     _socketService.registerUser();
-      
-  //     // Request active disasters after registration
-  //     Future.delayed(const Duration(seconds: 1), () {
-  //       _socketService.requestActiveDisasters();
-  //     });
-  //   });
-  // }
 
   @override
   void dispose() {
