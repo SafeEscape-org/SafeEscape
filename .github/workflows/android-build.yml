@@ -34,7 +34,16 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      # Removed the Flutter Tests step
+      # Set up signing configuration
+      - name: Setup Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          
+          # Create key.properties file
+          echo "storeFile=keystore.jks" > android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
 
       - name: Build APK
         run: flutter build apk --release

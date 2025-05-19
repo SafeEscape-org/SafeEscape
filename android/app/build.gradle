@@ -8,13 +8,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-// Add this at the top of the file, before the android { ... } block
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 android {
     namespace = "com.example.disaster_management"
     compileSdk = flutter.compileSdkVersion
@@ -54,13 +47,16 @@ android {
         release {
             // Removed duplicate applicationId and other properties that should only be in defaultConfig
             signingConfig signingConfigs.release
-            minifyEnabled false  // Change this to false
-            shrinkResources false  // Add this line
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
