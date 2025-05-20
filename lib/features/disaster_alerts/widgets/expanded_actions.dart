@@ -15,7 +15,7 @@ class ExpandedActions extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: ElevatedButton(
-        onPressed: onNavigationStart,
+        onPressed: onNavigationStart, // This should set isExpanded to true
         style: ElevatedButton.styleFrom(
           backgroundColor: EvacuationColors.primaryColor,
           foregroundColor: Colors.white,

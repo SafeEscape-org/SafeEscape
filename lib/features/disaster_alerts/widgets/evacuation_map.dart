@@ -18,7 +18,8 @@ class EvacuationMap extends StatefulWidget {
   final Function(GoogleMapController) onMapCreated;
   final Set<Polyline> polylines;
   final Set<Marker> markers;
-  final bool isExpanded; // Add this parameter
+  final bool isExpanded;
+  final Function(bool)? onNavigationStarted; // Add this callback
 
   const EvacuationMap({
     Key? key,
@@ -27,7 +28,8 @@ class EvacuationMap extends StatefulWidget {
     required this.polylines,
     this.markers = const {},
     required this.onMapCreated,
-    this.isExpanded = false, // Default to false
+    this.isExpanded = false,
+    this.onNavigationStarted, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -48,6 +50,7 @@ class _EvacuationMapState extends State<EvacuationMap>
   MapType _currentMapType = MapType.normal;
   bool _trafficEnabled = false;
   late RouteAnimator _routeAnimator;
+  Set<Marker> _localMarkers = {}; // Add this line to store local markers
 
   @override
   void initState() {
@@ -58,6 +61,9 @@ class _EvacuationMapState extends State<EvacuationMap>
     );
 
     _routeAnimator = RouteAnimator();
+    
+    // Initialize markers on startup
+    _localMarkers = _createMarkers();
 
     // Start route animation if polylines exist
     if (widget.polylines.isNotEmpty) {
@@ -103,9 +109,6 @@ class _EvacuationMapState extends State<EvacuationMap>
         // Map
         SizedBox(
           width: MediaQuery.of(context).size.width,
-          height: widget.isExpanded
-              ? MediaQuery.of(context).size.height
-              : MediaQuery.of(context).size.height * 0.4,
           child: GoogleMap(
             initialCameraPosition: CameraPosition(
               target: widget.currentPosition,
@@ -125,7 +128,7 @@ class _EvacuationMapState extends State<EvacuationMap>
                 }
               });
             },
-            markers: widget.markers.isEmpty ? _createMarkers() : widget.markers,
+            markers: widget.markers.isEmpty ? _localMarkers : widget.markers,
             polylines: _isAnimatingRoute
                 ? _routeAnimator.animatedPolylines
                 : widget.polylines,
@@ -206,7 +209,7 @@ class _EvacuationMapState extends State<EvacuationMap>
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
                 children: [
                   Text(
                     'Route to Destination',
@@ -233,6 +236,9 @@ class _EvacuationMapState extends State<EvacuationMap>
           ElevatedButton.icon(
             onPressed: () {
               // Start navigation logic
+              if (widget.onNavigationStarted != null) {
+                widget.onNavigationStarted!(true); // Request map expansion
+              }
             },
             icon: const Icon(Icons.navigation, size: 16),
             label: const Text('Navigate'),
