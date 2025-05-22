@@ -18,6 +18,7 @@ import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import '../models/place_type.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+//cicd checks
 class EvacuationScreen extends StatefulWidget {
   const EvacuationScreen({super.key});
   @override
