@@ -31,69 +31,86 @@ class AuthService {
     required String email,
     required String password,
     required String phone,
-    required List<String> emergencyContacts,
+    required List<dynamic> emergencyContacts,
     required double latitude,
     required double longitude,
     required String address,
   }) async {
     try {
-      debugPrint("Starting user registration for: $email");
-
-      // Create user with email and password
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // First, register the user with Firebase Authentication
+      print('Attempting to create user with email: $email');
+      
+      // Set reCAPTCHA verification settings
+      await FirebaseAuth.instance.setSettings(
+        appVerificationDisabledForTesting: false, // Set to true only for testing
+      );
+      
+      final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      debugPrint(
-          "User created successfully with ID: ${userCredential.user?.uid}");
-
-      // Get FCM token for notifications
+      
+      // Update the user's display name
+      await userCredential.user?.updateDisplayName(name);
+      
+      // Get FCM token if available
       String? fcmToken;
       try {
-        fcmToken = await FirebaseMessaging.instance.getToken();
-        debugPrint("FCM token obtained: ${fcmToken?.substring(0, 10)}...");
+        // Implement actual FCM token retrieval here if needed
+        fcmToken = "placeholder_token"; // Replace with actual token retrieval
       } catch (e) {
-        debugPrint("Failed to get FCM token: $e");
-        // Continue without FCM token
+        print('Could not get FCM token: $e');
       }
-
-      // Create user document with additional info
-      final userData = {
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'location': {
-          'latitude': latitude,
-          'longitude': longitude,
-          'address': address,
-        },
-        'emergencyContacts': emergencyContacts,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      // Add FCM token if available
-      if (fcmToken != null) {
-        userData['fcmTokens'] = [
-          {
-            'token': fcmToken,
-            'createdAt': DateTime.now().toIso8601String(),
-          }
-        ];
-      }
-
-      debugPrint("Saving user data to Firestore...");
-      await _firestore
+      
+      // Format current timestamp as string in ISO format
+      final now = DateTime.now();
+      final timestampStr = now.toIso8601String();
+      
+      // Create user document with the exact structure needed
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
-          .set(userData);
-      debugPrint("User data saved successfully");
-
+          .set({
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'createdAt': FieldValue.serverTimestamp(),
+            'emergencyContacts': emergencyContacts,
+            'fcmTokens': fcmToken != null ? [
+              {
+                'createdAt': timestampStr,
+                'token': fcmToken,
+              }
+            ] : [],
+            'location': {
+              'latitude': latitude,
+              'longitude': longitude,
+              'address': address,
+            },
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+      
+      print('User document created successfully with proper structure');
+      
+      // Navigate to the home screen
+      Navigator.pushReplacementNamed(context, '/home');
+      
       return userCredential;
     } catch (e) {
-      debugPrint("Registration error: $e");
-      throw _handleAuthError(e);
+      print('Registration error: $e');
+      String errorMessage = 'Registration failed. Please try again.';
+      
+      if (e.toString().contains('recaptcha')) {
+        errorMessage = 'Please complete the reCAPTCHA verification';
+      } else if (e.toString().contains('email-already-in-use')) {
+        errorMessage = 'This email is already registered';
+      } else if (e.toString().contains('invalid-email')) {
+        errorMessage = 'Please enter a valid email address';
+      } else if (e.toString().contains('weak-password')) {
+        errorMessage = 'Please use a stronger password';
+      }
+      
+      throw errorMessage;
     }
   }
 

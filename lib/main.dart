@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:disaster_management/core/constants/api_constants.dart';
+import 'package:disaster_management/features/disaster_alerts/pages/emergency_contacts_screen.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart'; // Add this import
@@ -8,7 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:disaster_management/config/fcm_config.dart';
 import 'package:disaster_management/config/firebase_config.dart';
 import 'package:disaster_management/core/constants/app_colors.dart';
-import 'package:disaster_management/features/disaster_alerts/pages/assistance_help_screen.dart';
+
 import 'package:disaster_management/features/disaster_alerts/pages/home_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/evacuation_screen.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
@@ -18,9 +20,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/services/auth_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:provider/provider.dart';
-import 'package:disaster_management/services/socket_service.dart';
-import 'package:disaster_management/services/notification_service.dart';
+
 
 // Add this function to run heavy tasks in the background
 Future<T> runHeavyTask<T>(Future<T> Function() task) {
@@ -34,15 +34,31 @@ void main() async {
   // Initialize Flutter binding first
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   
-  // Preserve splash screen while initializing
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  // Add these lines to improve performance
+  if (kReleaseMode) {
+    // Disable debug prints in release mode
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
   
-  // Optimize rendering performance
-  // Disable frame reporting to reduce "updateAcquireFence" errors
+  // Optimize Flutter rendering
+  WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = false;
+  
+  // Reduce frame reporting to minimize logs
   debugPrintBeginFrameBanner = false;
   debugPrintEndFrameBanner = false;
   
-  // Initialize Firebase first before creating socket service
+  // Preserve splash screen while initializing
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  
+  // Initialize rendering performance
+  debugPrintBeginFrameBanner = false;
+  debugPrintEndFrameBanner = false;
+  
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+  
+  // Initialize Firebase synchronously to ensure it's ready before any Firebase calls
   try {
     await FirebaseConfig.initializeFirebase();
     debugPrint('✅ Firebase initialized successfully');
@@ -50,20 +66,14 @@ void main() async {
     debugPrint('⚠️ Firebase initialization error: $e');
   }
   
-  // Create service instance once to avoid multiple instances
-  final socketService = SocketService();
+  // Add a small delay before removing splash screen to ensure Firebase is fully initialized
+  await Future.delayed(const Duration(milliseconds: 800));
   
-  // Start the app immediately
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(
-          value: socketService,
-        ),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  // Remove splash screen
+  FlutterNativeSplash.remove();
+  
+  // Start the app - removed MultiProvider
+  runApp(const MyApp());
   
   // Run remaining initialization tasks in parallel after app has started
   Future.microtask(() async {
@@ -73,22 +83,16 @@ void main() async {
       debugPrint('✅ FCM initialized successfully');
     } catch (e) {
       debugPrint('⚠️ FCM initialization error: $e');
-    } finally {
-      // Remove splash screen after initialization completes
-      // Add a longer delay to ensure UI is fully ready
-      await Future.delayed(const Duration(milliseconds: 800));
-      FlutterNativeSplash.remove();
     }
   });
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Use the notification service's navigator key
-      navigatorKey: NotificationService().navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
@@ -103,8 +107,16 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/auth',
       routes: {
-        '/auth': (context) => Consumer<SocketService>(
-          builder: (context, socketService, child) {
+        '/auth': (context) => FutureBuilder(
+          // Use FutureBuilder with a small delay to ensure Firebase Auth is ready
+          future: Future.delayed(const Duration(milliseconds: 300)),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            
             return StreamBuilder<User?>(
               stream: FirebaseAuth.instance.authStateChanges(),
               builder: (context, snapshot) {
@@ -124,13 +136,17 @@ class MyApp extends StatelessWidget {
           },
         ),
         '/home': (context) => const MainScreen(),
+        '/emergency_contacts': (context) => const MainScreen(initialIndex: 1),
+        '/evacuation': (context) => const MainScreen(initialIndex: 2),
       },
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+  
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -149,15 +165,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final List<GlobalKey> _screenKeys = [
     GlobalKey(), GlobalKey(), GlobalKey()
   ];
+  
+  late int currentIndex;
 
   @override
   void initState() {
     super.initState();
     
+    // Initialize currentIndex with the provided initialIndex
+    currentIndex = widget.initialIndex;
+    
     // Register for app lifecycle events
     WidgetsBinding.instance.addObserver(this);
     
-    // Defer heavy initialization to after first frame
+    // Initialize only essential features after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _deferredInitialization();
     });
@@ -173,22 +194,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (_isInForeground) {
       // App came to foreground, schedule a frame
       SchedulerBinding.instance.scheduleFrame();
-      
-      // Reconnect socket if needed
-      _checkAndReconnectSocket();
-    }
-  }
-  
-  void _checkAndReconnectSocket() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    if (!socketService.isConnected) {
-      _runInBackground(() async {
-        socketService.connectSocket();
-        return;
-      });
     }
   }
   
@@ -201,10 +206,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       try {
         // Perform all initialization before updating state
         await _setupUserUpdates();
-        
-        // Don't initialize socket here since it's handled in home screen
-        // This prevents duplicate initialization and UI flickers
-        // _initializeSocket();
         
         // Only update state once at the end of all initialization
         if (mounted) {
@@ -224,47 +225,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _initializeSocket() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      debugPrint('⚠️ Cannot initialize socket: No authenticated user');
-      return;
-    }
-    
-    // Store reference to avoid context issues during async operations
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    
-    // Run socket initialization in a separate isolate or compute
-    Future.microtask(() {
-      try {
-        if (!socketService.isConnected) {
-          // Add listener for connection event before connecting
-          socketService.socket.on('connect', (_) {
-            debugPrint('🟢 Socket connected, registering user: ${user.uid}');
-            socketService.registerUser();
-          });
-          
-          // Add error handling for socket connection
-          socketService.socket.on('connect_error', (error) {
-            debugPrint('⚠️ Socket connection error: $error');
-          });
-          
-          // Add reconnection logic
-          socketService.socket.on('reconnect', (_) {
-            debugPrint('🔄 Socket reconnected');
-            socketService.registerUser();
-          });
-          
-          socketService.connectSocket();
-        } else {
-          // If already connected, just register
-          socketService.registerUser();
-        }
-      } catch (e) {
-        debugPrint('❌ Socket initialization error: $e');
-      }
-    });
-  }
 
   // Add this helper method for background processing
   Future<void> _runInBackground(Future<void> Function() task) async {
@@ -300,6 +260,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (user != null) {
       // Run location update in background with lower priority
       Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return; // Add mounted check before async operation
         _runInBackground(() async {
           try {
             // Initial location update
@@ -312,6 +273,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       // Check and update FCM token if needed - with delay to reduce startup load
       Future.delayed(const Duration(seconds: 5), () {
+        if (!mounted) return; // Add mounted check before async operation
         _runInBackground(() async {
           try {
             bool tokenUpdated = await _authService.checkAndUpdateFCMToken(user.uid);
@@ -341,8 +303,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _locationUpdateTimer = Timer.periodic(
         const Duration(minutes: 45),
         (_) {
-          // Skip updates when app is in background
-          if (!_isInForeground) return;
+          // Skip updates when app is in background or widget is disposed
+          if (!_isInForeground || !mounted) return;
           
           _runInBackground(() async {
             await _authService.updateUserLocation(user.uid, context);
@@ -358,29 +320,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     
     _locationUpdateTimer?.cancel();
-    // Only disconnect if connected
-    final socketService = Provider.of<SocketService>(context, listen: false);
-    if (socketService.isConnected) {
-      socketService.socket.disconnect();
-    }
     super.dispose();
   }
 
-  int currentIndex = 0;
+ 
   void onTabSelected(int index) {
-    if (currentIndex == index) return;
+    if (currentIndex == index || !mounted) return;
     
-    // Use microtask to ensure state update happens after the current frame
-    Future.microtask(() {
-      if (mounted) {
-        setState(() {
-          currentIndex = index;
-          
-          // Initialize the screen if it hasn't been initialized yet
-          if (!_initializedScreens[index]!) {
-            _initializedScreens[index] = true;
-          }
-        });
+    setState(() {
+      currentIndex = index;
+      
+      // Initialize the screen if it hasn't been initialized yet
+      if (!_initializedScreens[index]!) {
+        _initializedScreens[index] = true;
       }
     });
   }
@@ -389,9 +341,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     // Use a more efficient approach to prevent unnecessary rebuilds
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _buildCurrentScreen(),
+      body: RepaintBoundary(
+        child: IndexedStack(
+          index: currentIndex,
+          children: [
+            KeepAliveWrapper(
+              key: _screenKeys[0],
+              child: CombinedHomeWeatherComponent(),
+            ),
+            KeepAliveWrapper(
+              key: _screenKeys[1],
+              child: EmergencyContactsScreen(),
+            ),
+            KeepAliveWrapper(
+              key: _screenKeys[2],
+              child: EvacuationScreen(),
+            ),
+          ],
+        ),
       ),
       // Wrap the bottom navigation bar in RepaintBoundary
       bottomNavigationBar: RepaintBoundary(
@@ -403,35 +370,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
   
-  // Extract screen building to a separate method
-  Widget _buildCurrentScreen() {
-    // Use keys to help Flutter identify which widgets have changed
-    return KeyedSubtree(
-      key: ValueKey('main_screen_$currentIndex'),
-      child: RepaintBoundary(
-        child: IndexedStack(
-          index: 0, // Always show the current screen only
-          children: [
-            if (currentIndex == 0)
-              KeepAliveWrapper(
-                key: _screenKeys[0],
-                child: CombinedHomeWeatherComponent(),
-              )
-            else if (currentIndex == 1)
-              KeepAliveWrapper(
-                key: _screenKeys[1],
-                child: EmergencyScreen(),
-              )
-            else
-              KeepAliveWrapper(
-                key: _screenKeys[2],
-                child: EvacuationScreen(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+
 }
 
 // Add this wrapper to prevent rebuilds and maintain state

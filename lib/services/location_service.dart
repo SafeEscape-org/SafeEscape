@@ -1,9 +1,12 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'package:disaster_management/core/constants/api_constants.dart';
 
 class LocationService {
   static const double earthRadiusKm = 6371;
@@ -35,17 +38,75 @@ class LocationService {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
-      String? address = await getAddressFromCoordinates(  // Removed underscore
+      String? address = await getAddressFromCoordinates(
+          position.latitude, position.longitude);
+          
+      // Get detailed address components
+      Map<String, String?> addressComponents = await _parseAddressComponents(
           position.latitude, position.longitude);
 
       return {
         "latitude": position.latitude,
         "longitude": position.longitude,
         "address": address,
+        "city": addressComponents["city"],
+        "state": addressComponents["state"],
+        "country": addressComponents["country"],
         "lastFetched": DateTime.now().toString(),
       };
     } catch (e) {
       debugPrint("Error fetching location: $e");
+      return null;
+    }
+  }
+  
+  // Helper method to parse address components
+  static Future<Map<String, String?>> _parseAddressComponents(double lat, double lon) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lon);
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        return {
+          "city": place.locality ?? place.subAdministrativeArea,
+          "state": place.administrativeArea,
+          "country": place.country,
+        };
+      }
+      return {"city": null, "state": null, "country": null};
+    } catch (e) {
+      debugPrint("Error parsing address components: $e");
+      return {"city": null, "state": null, "country": null};
+    }
+  }
+
+  // New method to predict disasters based on location
+  static Future<Map<String, dynamic>?> predictDisasterForLocation(Map<String, dynamic> locationData) async {
+    try {
+      final http.Client client = http.Client();
+      final response = await client.post(
+        Uri.parse(ApiConstants.disasterPredictionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "location": {
+            "city": locationData["city"] ?? "Unknown",
+            "state": locationData["state"] ?? "Unknown",
+            "country": locationData["country"] ?? "Unknown",
+            "coordinates": {
+              "latitude": locationData["latitude"],
+              "longitude": locationData["longitude"]
+            }
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        debugPrint("Error predicting disaster: ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Exception predicting disaster: $e");
       return null;
     }
   }

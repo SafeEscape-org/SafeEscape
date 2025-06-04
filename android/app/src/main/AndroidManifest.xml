@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <!-- Fixed uses-feature declaration -->
     <uses-feature
@@ -12,6 +13,16 @@
         android:label="SafeEscape"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- Add this meta-data tag for reCAPTCHA web client ID -->
+        <meta-data
+            android:name="com.google.firebase.auth.RecaptchaWebClientId"
+            android:value="1234567890-abcdefghijklmnopqrst.apps.googleusercontent.com" />
+            
+        <!-- Note: You have duplicate reCAPTCHA enabled meta-data tags, remove one of them -->
+        <meta-data
+            android:name="com.google.firebase.auth.RecaptchaEnabled"
+            android:value="true" />
 
          <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -45,7 +56,9 @@
             android:name="flutterEmbedding"
             android:value="2" />
       
-
+        <meta-data
+            android:name="com.google.firebase.auth.RecaptchaEnabled"
+            android:value="true" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
