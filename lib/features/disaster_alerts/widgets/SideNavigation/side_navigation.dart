@@ -158,11 +158,11 @@ class _SideNavigationState extends State<SideNavigation>
               child: Theme(
                 data: Theme.of(context).copyWith(
                   scrollbarTheme: ScrollbarThemeData(
-                    thumbColor: MaterialStateProperty.all(
+                    thumbColor: WidgetStateProperty.all(
                       EvacuationColors.primaryColor.withOpacity(0.5),
                     ),
                     radius: const Radius.circular(10),
-                    thickness: MaterialStateProperty.all(5),
+                    thickness: WidgetStateProperty.all(5),
                   ),
                 ),
                 child: Scrollbar(

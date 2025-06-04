@@ -13,7 +13,6 @@ dependencies:
   # Core functionality
   intl: ^0.18.1
   http: ^1.3.0
-
   # Firebase essentials
   firebase_core: ^2.15.1
   cloud_firestore: ^4.8.5
@@ -38,9 +37,8 @@ dependencies:
 
 dev_dependencies:
   # Development tools
+  flutter_native_splash: ^2.3.5 # or the latest version
   flutter_launcher_icons: ^0.14.3
-  flutter_native_splash: ^2.4.4
-
   # UI design tools (moved to dev_dependencies)
   flutter_svg: ^2.0.17
   flutter_animate: ^4.1.1+1
@@ -58,6 +56,7 @@ flutter:
     - assets/rainy.svg
     - assets/sun.svg
     - assets/animations/
+    - assets/images/
     # Add this section at the bottom of your pubspec.yaml file
 flutter_launcher_icons:
   android: true
