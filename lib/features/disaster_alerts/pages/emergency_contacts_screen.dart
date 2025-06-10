@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+
 import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
 import 'package:disaster_management/features/disaster_alerts/constants/colors.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/add_contact_form.dart';
@@ -17,17 +18,39 @@ class EmergencyContactsScreen extends StatefulWidget {
   State<EmergencyContactsScreen> createState() => _EmergencyContactsScreenState();
 }
 
-class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
+class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> with SingleTickerProviderStateMixin {
   final String? _userId = FirebaseAuth.instance.currentUser?.uid;
   List<Map<String, dynamic>> _contacts = [];
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _error;
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
     _fetchContacts();
+
+    // Animation setup
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchContacts() async {
@@ -39,108 +62,81 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     });
 
     try {
-      // Get contacts from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final contactsJson = prefs.getString('emergency_contacts_$_userId') ?? '[]';
-      
-      print('Fetched contacts from local storage: $contactsJson');
-      
       final List<dynamic> data = json.decode(contactsJson);
       setState(() {
         _contacts = List<Map<String, dynamic>>.from(data);
         _isLoading = false;
       });
     } catch (e) {
-      print('Error fetching contacts: $e');
       setState(() {
-        _error = 'Error: $e';
+        _error = 'Failed to load contacts: ${e.toString()}';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _addContact(Map<String, String> contactData) async {
-    // Get the current user ID
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    
-    if (currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User not logged in'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
+    if (currentUserId == null) return;
+
     setState(() {
       _isSubmitting = true;
       _error = null;
     });
 
     try {
-      // Print debug information
-      print('Adding contact for user: $currentUserId');
-      print('Contact data: ${json.encode(contactData)}');
-      
-      // Format the data - remove any call-related fields
-      final formattedData = {
-        "name": contactData['name'],
-        "phone": contactData['phone'],
-        "relationship": contactData['relationship']
-      };
-      
-      // Get existing contacts
       final prefs = await SharedPreferences.getInstance();
       final contactsJson = prefs.getString('emergency_contacts_$currentUserId') ?? '[]';
       final List<dynamic> existingContacts = json.decode(contactsJson);
-      
-      // Add new contact
-      existingContacts.add(formattedData);
-      
-      // Save updated contacts
-      await prefs.setString('emergency_contacts_$currentUserId', json.encode(existingContacts));
-      
-      // Close the bottom sheet if it's still open
-      if (Navigator.canPop(context)) {
+
+      existingContacts.add({
+        "name": contactData['name'],
+        "phone": contactData['phone'],
+        "relationship": contactData['relationship'] ?? ''
+      });
+
+      await prefs.setString(
+        'emergency_contacts_$currentUserId',
+        json.encode(existingContacts),
+      );
+
+      if (mounted) {
         Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Contact added successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchContacts();
       }
-      
-      // Refresh contacts
-      _fetchContacts();
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact added successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      setState(() {
-        _isSubmitting = false;
-      });
     } catch (e) {
-      print('Error adding contact: $e');
-      setState(() {
-        _error = 'Error adding contact: $e';
-        _isSubmitting = false;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to add contact: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to add contact: ${e.toString()}';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add contact: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
   Future<void> _removeContact(String phoneNumber) async {
     if (_userId == null) return;
 
-    // Show confirmation dialog
-    bool confirm = await showDialog(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Contact'),
@@ -157,7 +153,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         ],
       ),
     ) ?? false;
-    
+
     if (!confirm) return;
 
     setState(() {
@@ -166,34 +162,38 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     });
 
     try {
-      // Get existing contacts
       final prefs = await SharedPreferences.getInstance();
       final contactsJson = prefs.getString('emergency_contacts_$_userId') ?? '[]';
       final List<dynamic> existingContacts = json.decode(contactsJson);
-      
-      // Remove contact with matching phone number
-      final updatedContacts = existingContacts.where((contact) => 
-        contact['phone'] != phoneNumber
-      ).toList();
-      
-      // Save updated contacts
-      await prefs.setString('emergency_contacts_$_userId', json.encode(updatedContacts));
-      
-      // Refresh contacts
-      _fetchContacts();
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contact removed successfully'),
-          backgroundColor: Colors.green,
-        ),
+
+      final updatedContacts = existingContacts.where((contact) => contact['phone'] != phoneNumber).toList();
+
+      await prefs.setString(
+        'emergency_contacts_$_userId',
+        json.encode(updatedContacts),
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Contact removed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchContacts();
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Error removing contact: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to remove contact: ${e.toString()}';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -202,41 +202,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: EvacuationColors.backgroundColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: AddContactForm(
-            isSubmitting: _isSubmitting,
-            onCancel: () => Navigator.pop(context),
-            onSubmit: (contactData) {
-              // Validate data before submission
-              print('Form data before submission: $contactData');
-              if (contactData['name']?.isEmpty ?? true) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Name cannot be empty'), backgroundColor: Colors.red)
-                );
-                return;
-              }
-              if (contactData['phone']?.isEmpty ?? true) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Phone cannot be empty'), backgroundColor: Colors.red)
-                );
-                return;
-              }
-              _addContact(contactData);
-            },
-          ),
-        ),
+      builder: (context) => AddContactForm(
+        onCancel: () => Navigator.pop(context),
+        onSubmit: _addContact,
+        isSubmitting: _isSubmitting,
       ),
     );
   }
@@ -245,93 +214,90 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       locationName: "Emergency Contacts",
-      backgroundColor: EvacuationColors.backgroundColor,
-      drawer: const SideNavigation(userName: 'User'),  // Use a constant value for now
+      backgroundColor: Theme.of(context).colorScheme.background,
+      drawer: const SideNavigation(userName: 'User'),
       body: Stack(
         children: [
-          RefreshIndicator(
-            onRefresh: _fetchContacts,
-            color: EvacuationColors.primaryColor,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(20.0),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _buildHeader(),
-                      const SizedBox(height: 20),
-                      const EmergencyServicesList(),
-                      const SizedBox(height: 30),
-                      ContactsList(
-                        contacts: _contacts,
-                        isLoading: _isLoading,
-                        isSubmitting: _isSubmitting,
-                        error: _error,
-                        onAddContact: _showAddContactForm,
-                        onRefresh: _fetchContacts,
-                        onRemoveContact: _removeContact,
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Emergency Contacts',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: EvacuationColors.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
-                      const SizedBox(height: 100), // Space for FAB
-                    ]),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Quick access to your emergency contacts and services',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[700],
+                            ),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 30),
+                const EmergencyServicesList(),
+                const SizedBox(height: 30),
+                ContactsList(
+                  contacts: _contacts,
+                  isLoading: _isLoading,
+                  isSubmitting: _isSubmitting,
+                  error: _error,
+                  onAddContact: _showAddContactForm,
+                  onRefresh: _fetchContacts,
+                  onRemoveContact: _removeContact,
+                ),
+                const SizedBox(height: 100),
               ],
             ),
           ),
-          // Add FloatingActionButton as a positioned widget
           Positioned(
-            left: 20,
-            bottom: 100,
-            child: Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: EvacuationColors.primaryColor.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: FloatingActionButton(
-                onPressed: _showAddContactForm,
-                backgroundColor: EvacuationColors.primaryColor,
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ),
-          ),
-          // Add the ChatAssistance widget
+  right: 20,
+  bottom: 100,
+  child: ScaleTransition(
+    scale: _fadeAnimation,
+    child: ElevatedButton.icon(
+      onPressed: _showAddContactForm,
+      icon: const Icon(Icons.person_add, size: 22),
+      label: const Text(
+        'Add Contact',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        backgroundColor: EvacuationColors.primaryColor,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        elevation: 8,
+        shadowColor: EvacuationColors.primaryColor.withOpacity(0.5),
+      ),
+    ),
+  ),
+),
+
           const Positioned(
-            right: 16,
-            bottom: 24,
+            right: 20,
+            bottom: 20,
             child: ChatAssistance(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Emergency Contacts',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: EvacuationColors.textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Add your emergency contacts for quick access during emergencies',
-          style: TextStyle(
-            fontSize: 14,
-            color: EvacuationColors.subtitleColor,
-          ),
-        ),
-      ],
     );
   }
 }
