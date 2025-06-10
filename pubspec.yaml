@@ -22,11 +22,6 @@ dependencies:
 
   # Location and maps (essential for disaster management)
 
-  # Firebase essentials
-  firebase_core: ^2.15.1
-  cloud_firestore: ^4.8.5
-  firebase_auth: ^4.7.3
-  firebase_messaging: ^14.6.7
 
   # Location and maps (essential for disaster management)
   google_maps_flutter: ^2.10.0
@@ -37,11 +32,9 @@ dependencies:
   shared_preferences: ^2.2.0
 
   # UI components (essential)
-  shared_preferences: ^2.2.0
 
   # UI components (essential)
   google_fonts: ^6.2.1
-  lottie: ^3.3.1
   lottie: ^3.3.1
   font_awesome_flutter: ^10.8.0
 
@@ -50,12 +43,10 @@ dependencies:
 
 dev_dependencies:
   # Development tools
-  flutter_native_splash: ^2.3.5 # or the latest version
+  # flutter_native_splash: ^2.3.5 # or the latest version
 
   # Backend communication
   socket_io_client: ^2.0.3+1
-
-dev_dependencies:
   # Development tools
   flutter_launcher_icons: ^0.14.3
   # UI design tools (moved to dev_dependencies)
@@ -67,12 +58,6 @@ dev_dependencies:
   # cached_network_image: ^3.3.0
   flutter_native_splash: ^2.4.4
 
-  # UI design tools (moved to dev_dependencies)
-  flutter_svg: ^2.0.17
-  flutter_animate: ^4.1.1+1
-
-  # Optional utilities (moved to dev_dependencies)
-  path_provider: ^2.1.5
   # cached_network_image: ^3.3.0
 
 flutter:
@@ -95,10 +80,4 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF" # Or any color that matches your icon design
   min_sdk_android: 23
     # Add this section at the bottom of your pubspec.yaml file
-flutter_launcher_icons:
-  android: true
-  ios: false # Since you're targeting Android only
-  image_path: "assets/icon/ic_launcher.png"
-  adaptive_icon_foreground: "assets/icon/ic_launcher_foreground.png"
-  adaptive_icon_background: "#FFFFFF" # Or any color that matches your icon design
-  min_sdk_android: 23
+
