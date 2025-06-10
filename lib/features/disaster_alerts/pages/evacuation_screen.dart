@@ -18,6 +18,7 @@ import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import '../models/place_type.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 //cicd checks code ql fi
 class EvacuationScreen extends StatefulWidget {
   const EvacuationScreen({super.key});
@@ -43,20 +44,20 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
   final ScrollController _placesScrollController = ScrollController();
   List<EvacuationPlace> _allPlaces = [];
   bool _isMapExpanded = false;
-  
+
   // Helper methods for route information
   String _calculateRouteDistance() {
     // In a real app, this would calculate the actual distance
     // For now, return a placeholder value
     return '3.2';
   }
-  
+
   String _calculateRouteDuration() {
     // In a real app, this would calculate the actual duration
     // For now, return a placeholder value
     return '12';
   }
-  
+
   void _clearRoute() {
     setState(() {
       _polylines.clear();
@@ -115,7 +116,7 @@ class _EvacuationScreenState extends State<EvacuationScreen> {
     }
   }
 
-Future<void> _fetchNearbyPlaces() async {
+  Future<void> _fetchNearbyPlaces() async {
     if (_currentPosition == null) return;
 
     setState(() {
@@ -201,13 +202,13 @@ Future<void> _fetchNearbyPlaces() async {
     }
   }
 
-   // New method to generate enhanced markers
+  // New method to generate enhanced markers
   Future<Set<Marker>> _generateEnhancedMarkers({
     required List<EvacuationPlace> places,
     required LatLng currentPosition,
   }) async {
     final Set<Marker> markers = {};
-    
+
     // Add current location marker
     final currentLocationMarker = await _createCustomMarker(
       id: 'current_location',
@@ -219,7 +220,7 @@ Future<void> _fetchNearbyPlaces() async {
       isCurrentLocation: true,
     );
     markers.add(currentLocationMarker);
-    
+
     // Add place markers
     for (var place in places) {
       final placeMarker = await _createCustomMarker(
@@ -234,7 +235,7 @@ Future<void> _fetchNearbyPlaces() async {
       );
       markers.add(placeMarker);
     }
-    
+
     return markers;
   }
 
@@ -257,7 +258,7 @@ Future<void> _fetchNearbyPlaces() async {
       rating: rating,
       isCurrentLocation: isCurrentLocation,
     );
-    
+
     return Marker(
       markerId: MarkerId(id),
       position: position,
@@ -270,7 +271,7 @@ Future<void> _fetchNearbyPlaces() async {
       zIndex: isCurrentLocation ? 2 : 1, // Current location appears on top
     );
   }
-  
+
   // Create custom marker bitmap
   Future<BitmapDescriptor> _createMarkerBitmap({
     required IconData iconData,
@@ -281,14 +282,14 @@ Future<void> _fetchNearbyPlaces() async {
     // For simplicity, we'll use default markers with custom hues for now
     // In a production app, you would use a custom widget and RepaintBoundary
     // to create truly custom markers with ratings, etc.
-    
+
     if (isCurrentLocation) {
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     }
-    
+
     // Use different hues based on place type or rating
     double hue = BitmapDescriptor.hueRed;
-    
+
     switch (_selectedPlaceType) {
       case PlaceType.hospital:
         hue = BitmapDescriptor.hueRed;
@@ -305,7 +306,7 @@ Future<void> _fetchNearbyPlaces() async {
       default:
         hue = BitmapDescriptor.hueRose;
     }
-    
+
     return BitmapDescriptor.defaultMarkerWithHue(hue);
   }
 
@@ -341,7 +342,7 @@ Future<void> _fetchNearbyPlaces() async {
                       },
                     ),
             ),
-            
+
             // Back button
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -364,7 +365,7 @@ Future<void> _fetchNearbyPlaces() async {
                 ),
               ),
             ),
-            
+
             // Add a floating route info panel at the bottom
             if (_polylines.isNotEmpty)
               Positioned(
@@ -392,7 +393,8 @@ Future<void> _fetchNearbyPlaces() async {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: EvacuationColors.primaryColor.withOpacity(0.1),
+                              color: EvacuationColors.primaryColor
+                                  .withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
@@ -451,7 +453,8 @@ Future<void> _fetchNearbyPlaces() async {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: EvacuationColors.primaryColor,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -468,7 +471,7 @@ Future<void> _fetchNearbyPlaces() async {
         ),
       );
     }
-    
+
     // Regular view with small map
     return Stack(
       children: [
@@ -506,7 +509,7 @@ Future<void> _fetchNearbyPlaces() async {
                           selectedPlaceType: _selectedPlaceType,
                           onTypeSelected: (type) {
                             setState(() => _selectedPlaceType = type);
-                            _fetchNearbyPlaces();
+                            _fetchNearbyPlaces(); //this component is component which we scroll and change type to hosptials ,polic stations etc
                           },
                         ),
                         const SizedBox(height: 24),
@@ -658,7 +661,7 @@ Future<void> _fetchNearbyPlaces() async {
 
   Widget _buildPlacesList() {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       sliver: _displayedPlaces.isEmpty
           ? SliverFillRemaining(
               child: _isLoading ? _buildLoadingIndicator() : _buildEmptyState())
@@ -819,127 +822,107 @@ Future<void> _fetchNearbyPlaces() async {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
+    // Calculate safe padding for extremely small screens
+    final double safePadding = isSmallScreen ? 8 : 12;
+    final double iconContainerSize = isSmallScreen ? 32 : 40;
+    final double iconSize = isSmallScreen ? 16 : 20;
+    final double fontSize = isSmallScreen ? 12 : 14;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: EvacuationColors.cardBackground,
-        borderRadius: BorderRadius.circular(24),
-        elevation: 3,
-        shadowColor: EvacuationColors.shadowColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        elevation: 2,
+        shadowColor: EvacuationColors.shadowColor.withOpacity(0.2),
         child: InkWell(
           onTap: () => _showRouteToPlace(place),
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: EvacuationColors.borderColor.withOpacity(0.7),
-                width: 1.5,
-              ),
-              gradient: LinearGradient(
-                colors: [
-                  EvacuationColors.cardBackground,
-                  EvacuationColors.cardBackground.withOpacity(0.95),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: EdgeInsets.all(safePadding),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        EvacuationColors.primaryColor.withOpacity(0.2),
-                        EvacuationColors.accentColor.withOpacity(0.2),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                // Icon container - fixed size to prevent overflow
+                SizedBox(
+                  width: iconContainerSize,
+                  height: iconContainerSize,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: EvacuationColors.primaryColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: EvacuationColors.primaryColor.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    placeIcon,
-                    color: EvacuationColors.primaryColor,
-                    size: isSmallScreen ? 18 : 22,
+                    child: Icon(
+                      placeIcon,
+                      color: EvacuationColors.primaryColor,
+                      size: iconSize,
+                    ),
                   ),
                 ),
-                SizedBox(width: isSmallScreen ? 8 : 14),
+
+                // Spacing
+                SizedBox(width: safePadding / 2),
+
+                // Content - use Expanded to prevent overflow
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Name with flexible width
                       Text(
                         place.name,
                         style: GoogleFonts.inter(
                           color: EvacuationColors.textColor,
-                          fontSize: isSmallScreen ? 13 : 15,
+                          fontSize: fontSize,
                           fontWeight: FontWeight.w600,
                           height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: isSmallScreen ? 4 : 8),
-                      Wrap(
-                        spacing: isSmallScreen ? 4 : 6,
-                        runSpacing: isSmallScreen ? 4 : 6,
-                        children: [
-                          if (place.rating != null)
-                            _buildCompactInfoChip(
-                              icon: Icons.star_rounded,
-                              text: place.rating!.toString(),
-                              color: const Color(0xFFFB923C),
+
+                      SizedBox(height: safePadding / 2),
+
+                      // Info chips - use SingleChildScrollView to prevent overflow
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (place.rating != null)
+                              _buildSimpleInfoChip(
+                                icon: Icons.star_rounded,
+                                text: place.rating!.toString(),
+                                color: const Color(0xFFFB923C),
+                                isSmallScreen: isSmallScreen,
+                              ),
+                            SizedBox(width: safePadding / 2),
+                            _buildSimpleInfoChip(
+                              icon: Icons.location_on_rounded,
+                              text: place.vicinity,
+                              color: EvacuationColors.primaryColor,
                               isSmallScreen: isSmallScreen,
-                              maxWidth:
-                                  screenWidth * (isSmallScreen ? 0.15 : 0.2),
                             ),
-                          _buildCompactInfoChip(
-                            icon: Icons.location_on_rounded,
-                            text: place.vicinity,
-                            color: EvacuationColors.primaryColor,
-                            isSmallScreen: isSmallScreen,
-                            maxWidth:
-                                screenWidth * (isSmallScreen ? 0.35 : 0.45),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: isSmallScreen ? 4 : 8),
-                Hero(
-                  tag: 'arrow_${place.placeId}',
-                  child: Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
-                    decoration: BoxDecoration(
-                      color: EvacuationColors.primaryColor.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: EvacuationColors.primaryColor.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: EvacuationColors.primaryColor,
-                      size: isSmallScreen ? 10 : 14,
-                    ),
+
+                // Chevron icon - fixed size to prevent overflow
+                Container(
+                  margin: EdgeInsets.only(left: safePadding / 2),
+                  width: iconSize,
+                  height: iconSize,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: EvacuationColors.primaryColor,
+                    size: iconSize,
                   ),
                 ),
               ],
@@ -950,24 +933,24 @@ Future<void> _fetchNearbyPlaces() async {
     );
   }
 
-  // More compact info chip for all screen sizes
-  Widget _buildCompactInfoChip({
+  // Simple info chip without wrapping and with flexible width
+  Widget _buildSimpleInfoChip({
     required IconData icon,
     required String text,
     required Color color,
     required bool isSmallScreen,
-    required double maxWidth,
   }) {
+    final double chipFontSize = isSmallScreen ? 10 : 12;
+    final double chipIconSize = isSmallScreen ? 10 : 12;
+
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 6 : 8, vertical: isSmallScreen ? 3 : 4),
+        horizontal: 6,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -975,22 +958,33 @@ Future<void> _fetchNearbyPlaces() async {
           Icon(
             icon,
             color: color,
-            size: isSmallScreen ? 10 : 14,
+            size: chipIconSize,
           ),
-          SizedBox(width: isSmallScreen ? 3 : 4),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Text(
+          const SizedBox(width: 2),
+          // For ratings, show full text
+          if (text.length <= 3)
+            Text(
               text,
               style: GoogleFonts.inter(
-                color: EvacuationColors.textColor,
-                fontSize: isSmallScreen ? 10 : 12,
+                fontSize: chipFontSize,
                 fontWeight: FontWeight.w500,
+                color: EvacuationColors.textColor,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            )
+          // For longer texts like vicinity, use flexible width with ellipsis
+          else
+            Flexible(
+              child: Text(
+                text,
+                style: GoogleFonts.inter(
+                  fontSize: chipFontSize,
+                  fontWeight: FontWeight.w500,
+                  color: EvacuationColors.textColor,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1272,7 +1266,7 @@ Future<void> _fetchNearbyPlaces() async {
           _polylines.clear();
           _polylines.add(routePolyline);
         });
-        
+
         // If map is expanded, show the route info panel
         if (_isMapExpanded) {
           // Already showing the route info panel via the if condition in the UI
@@ -1280,7 +1274,7 @@ Future<void> _fetchNearbyPlaces() async {
           // Consider expanding the map to show the route
           _toggleMapExpansion();
         }
-        
+
         mapController.animateCamera(
           CameraUpdate.newLatLngBounds(
             MapBoundsCalculator.getRouteLatLngBounds(polylinePoints),
