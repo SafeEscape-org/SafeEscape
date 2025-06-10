@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 
 import 'nav_header.dart';
 import 'nav_item.dart';
 import 'nav_footer.dart';
-import '../../common/animated_background.dart';
 import '../../models/navigation_item.dart';
 import '../../constants/colors.dart';
+import 'dart:math' as math;
 
 class SideNavigation extends StatefulWidget {
   final String userName;
@@ -32,9 +31,7 @@ class SideNavigation extends StatefulWidget {
   State<SideNavigation> createState() => _SideNavigationState();
 }
 
-class _SideNavigationState extends State<SideNavigation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+class _SideNavigationState extends State<SideNavigation> {
   late int _selectedIndex;
   final ScrollController _scrollController = ScrollController();
   final List<NavigationItem> _navItems = [];
@@ -43,13 +40,6 @@ class _SideNavigationState extends State<SideNavigation>
   void initState() {
     super.initState();
     _selectedIndex = widget.initialSelectedIndex;
-
-    // Animation controller for entrance and exit animations
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _animationController.forward();
 
     // Initialize navigation items
     _initNavigationItems();
@@ -93,7 +83,6 @@ class _SideNavigationState extends State<SideNavigation>
 
   @override
   void dispose() {
-    _animationController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -120,99 +109,104 @@ class _SideNavigationState extends State<SideNavigation>
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: EvacuationColors.backgroundColor,
-      elevation: 0,
-      child: AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(-0.2, 0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: _animationController,
-              curve: Curves.easeOutCubic,
-            )),
-            child: FadeTransition(
-              opacity: _animationController,
-              child: child,
-            ),
-          );
-        },
-        child: Column(
-          children: [
-            // Header with user profile
-            NavHeader(
-              userName: widget.userName,
-              userEmail: widget.userEmail,
-              userAvatar: widget.userAvatar,
-              onProfileTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/profile');
-              },
-            ),
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isSmallScreen =
+        screenSize.width < 360 || screenSize.height < 600;
+    final double drawerWidth = math.min(
+        isSmallScreen ? screenSize.width * 0.85 : 300,
+        screenSize.width - 40 // Maximum width constraint
+        );
 
-            // Navigation items
-            Expanded(
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  scrollbarTheme: ScrollbarThemeData(
-                    thumbColor: MaterialStateProperty.all(
-                      EvacuationColors.primaryColor.withOpacity(0.5),
-                    ),
-                    radius: const Radius.circular(10),
-                    thickness: MaterialStateProperty.all(5),
-                  ),
+    return SizedBox(
+      width: drawerWidth,
+      child: Drawer(
+        width: drawerWidth,
+        backgroundColor: EvacuationColors.backgroundColor,
+        elevation: 0,
+        child: SafeArea(
+          child: LayoutBuilder(builder: (context, constraints) {
+            return Column(
+              children: [
+                // Header with user profile
+                NavHeader(
+                  userName: widget.userName,
+                  userEmail: widget.userEmail,
+                  userAvatar: widget.userAvatar,
+                  onProfileTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/profile');
+                  },
+                  isSmallScreen: isSmallScreen,
                 ),
-                child: Scrollbar(
-                  controller: _scrollController,
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 12,
+
+                // Navigation items - wrap in Flexible to avoid overflow
+                Flexible(
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      scrollbarTheme: ScrollbarThemeData(
+                        thumbColor: MaterialStateProperty.all(
+                          EvacuationColors.primaryColor.withOpacity(0.5),
+                        ),
+                        radius: const Radius.circular(10),
+                        thickness: MaterialStateProperty.all(5),
+                      ),
                     ),
-                    child: Column(
-                      children: List.generate(
-                        _navItems.length,
-                        (index) => NavItem(
-                          item: _navItems[index],
-                          isSelected: _selectedIndex == index,
-                          index: index,
-                          onTap: () => _handleItemTap(index),
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      thumbVisibility: true,
+                      child: ListView(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
+                          vertical: isSmallScreen ? 8 : 16,
+                          horizontal: isSmallScreen ? 8 : 12,
+                        ),
+                        children: List.generate(
+                          _navItems.length,
+                          (index) => NavItem(
+                            item: _navItems[index],
+                            isSelected: _selectedIndex == index,
+                            index: index,
+                            onTap: () => _handleItemTap(index),
+                            isSmallScreen: isSmallScreen,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
 
-            // Footer with logout button
-            NavFooter(
-              onLogoutTap: () {
-                HapticFeedback.mediumImpact();
-                // Show confirmation dialog
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  builder: (context) => _buildLogoutConfirmation(context),
-                );
-              },
-            ),
-          ],
+                // Footer with logout button
+                NavFooter(
+                  onLogoutTap: () {
+                    HapticFeedback.mediumImpact();
+                    // Show confirmation dialog
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
+                      builder: (context) =>
+                          _buildLogoutConfirmation(context, isSmallScreen),
+                    );
+                  },
+                  isSmallScreen: isSmallScreen,
+                ),
+              ],
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildLogoutConfirmation(BuildContext context) {
+  Widget _buildLogoutConfirmation(BuildContext context, bool isSmallScreen) {
+    final double modalHeight = math.min(
+        MediaQuery.of(context).size.height * (isSmallScreen ? 0.2 : 0.25),
+        isSmallScreen ? 180.0 : 220.0 // Maximum height constraint
+        );
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.25,
+      height: modalHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -236,71 +230,73 @@ class _SideNavigationState extends State<SideNavigation>
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Text(
             'Logout',
             style: GoogleFonts.poppins(
-              fontSize: 20,
+              fontSize: isSmallScreen ? 18 : 20,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isSmallScreen ? 8 : 12),
           Text(
             'Are you sure you want to logout?',
             style: GoogleFonts.poppins(
-              fontSize: 16,
+              fontSize: isSmallScreen ? 14 : 16,
               color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 24),
+          Spacer(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.only(bottom: isSmallScreen ? 16 : 24),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: EvacuationColors.primaryColor),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 16 : 24,
+                      vertical: isSmallScreen ? 8 : 12,
                     ),
-                    child: Text(
-                      'Cancel',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: EvacuationColors.primaryColor,
-                      ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    side: BorderSide(color: EvacuationColors.primaryColor),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w500,
+                      color: EvacuationColors.primaryColor,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Handle logout
-                      Navigator.pop(context);
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                SizedBox(width: isSmallScreen ? 12 : 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Handle logout action
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 16 : 24,
+                      vertical: isSmallScreen ? 8 : 12,
                     ),
-                    child: Text(
-                      'Logout',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: Text(
+                    'Logout',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
                     ),
                   ),
                 ),

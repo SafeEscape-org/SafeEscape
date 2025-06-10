@@ -11,6 +11,8 @@ import 'evacuation_map/map_controls.dart';
 import 'evacuation_map/route_info_panel.dart';
 import 'evacuation_map/route_animation.dart';
 import 'evacuation_map/route_calculation.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:math' as math;
 
 class EvacuationMap extends StatefulWidget {
   final LatLng currentPosition;
@@ -84,20 +86,16 @@ class _EvacuationMapState extends State<EvacuationMap>
     if (widget.polylines != oldWidget.polylines) {
       _updateRouteDetails();
       if (widget.polylines.isNotEmpty) {
-        _routeAnimator.startAnimation(
-          widget.polylines,
-          (polylines) {
+        _routeAnimator.startAnimation(widget.polylines, (polylines) {
             setState(() {
               // This updates the UI when animation progresses
               _isAnimatingRoute = true;
             });
-          },
-          () {
+        }, () {
             setState(() {
               _isAnimatingRoute = false;
             });
-          }
-        );
+        });
       }
     }
   }
@@ -174,24 +172,42 @@ class _EvacuationMapState extends State<EvacuationMap>
 
   // Replace your existing _buildRouteInfoPanel with this floating version
   Widget _buildFloatingRouteInfoPanel() {
+    // Get screen width to calculate adaptive spacing
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    // Calculate adaptive sizes
+    final double iconSize = isSmallScreen ? 18 : 20;
+    final double fontSize = isSmallScreen ? 12 : 14;
+    final double buttonFontSize = isSmallScreen ? 12 : 14;
+    final double padding = isSmallScreen ? 8 : 12;
+    final double spacing = isSmallScreen ? 6 : 12;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding / 2),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // Semi-transparent background
+        color: Colors.white
+            .withOpacity(0.95), // More opaque for better readability
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+            spreadRadius: 1,
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top row with route info
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Route icon
           Container(
-            padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(padding * 0.75),
             decoration: BoxDecoration(
               color: EvacuationColors.primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -199,31 +215,31 @@ class _EvacuationMapState extends State<EvacuationMap>
             child: Icon(
               Icons.directions,
               color: EvacuationColors.primaryColor,
-              size: 20,
+                  size: iconSize,
             ),
           ),
 
           // Route details
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: spacing),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
+                    mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Route to Destination',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                        style: GoogleFonts.inter(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w600,
                       color: EvacuationColors.textColor,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                      SizedBox(height: spacing / 3),
                   Text(
                     '$_routeDistance km • $_routeDuration min',
-                    style: TextStyle(
-                      fontSize: 12,
+                        style: GoogleFonts.inter(
+                          fontSize: fontSize - 2,
                       color: EvacuationColors.subtitleColor,
                     ),
                   ),
@@ -231,23 +247,77 @@ class _EvacuationMapState extends State<EvacuationMap>
               ),
             ),
           ),
+            ],
+          ),
 
-          // Navigation button
-          ElevatedButton.icon(
-            onPressed: () {
-              // Start navigation logic
+          // Spacing between rows
+          SizedBox(height: spacing * 0.75),
+
+          // Button row
+          Container(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: () {
+                _showAIRoutingDialog();
+                // Start navigation logic after AI "processing"
+                Future.delayed(const Duration(milliseconds: 2500), () {
               if (widget.onNavigationStarted != null) {
                 widget.onNavigationStarted!(true); // Request map expansion
               }
-            },
-            icon: const Icon(Icons.navigation, size: 16),
-            label: const Text('Navigate'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: EvacuationColors.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              shape: RoundedRectangleBorder(
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                    vertical: padding * 0.75, horizontal: padding),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      EvacuationColors.primaryColor,
+                      EvacuationColors.accentColor,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: EvacuationColors.primaryColor.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Animated navigation icon
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(seconds: 2),
+                      curve: Curves.easeInOut,
+                      builder: (context, value, child) {
+                        return Transform.rotate(
+                          angle: value * 0.1 * math.sin(value * 10),
+                          child: Icon(
+                            Icons.navigation_rounded,
+                            color: Colors.white,
+                            size: iconSize,
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(width: spacing / 2),
+                    // Button text
+                    Text(
+                      'AI-Optimized Route',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: buttonFontSize,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -275,7 +345,7 @@ class _EvacuationMapState extends State<EvacuationMap>
       onDarkModeToggled: () {
         setState(() {
           _isDarkMode = !_isDarkMode;
-          MapStyleUtils.setMapStyle(_mapController,_isDarkMode);
+          MapStyleUtils.setMapStyle(_mapController, _isDarkMode);
         });
       },
       onMyLocationPressed: () {
@@ -424,18 +494,180 @@ class _EvacuationMapState extends State<EvacuationMap>
       _isAnimatingRoute = true;
     });
     
-    _routeAnimator.startAnimation(
-      widget.polylines,
-      (polylines) {
+    _routeAnimator.startAnimation(widget.polylines, (polylines) {
         setState(() {
           // This updates the UI when animation progresses
         });
-      },
-      () {
+    }, () {
         setState(() {
           _isAnimatingRoute = false;
-        });
-      }
+      });
+    });
+  }
+
+  // Add this method to show the AI routing dialog
+  void _showAIRoutingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // AI processing animation
+              SizedBox(
+                height: 80,
+                width: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Outer rotating circle
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 4.0),
+                      duration: const Duration(seconds: 2),
+                      builder: (context, value, child) {
+                        return Transform.rotate(
+                          angle: value * math.pi,
+                          child: Container(
+                            height: 80,
+                            width: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: EvacuationColors.primaryColor
+                                    .withOpacity(0.3),
+                                width: 3,
+                                strokeAlign: BorderSide.strokeAlignOutside,
+                              ),
+                              gradient: SweepGradient(
+                                colors: [
+                                  EvacuationColors.primaryColor
+                                      .withOpacity(0.0),
+                                  EvacuationColors.primaryColor,
+                                ],
+                                stops: const [0.7, 1.0],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Inner pulsing circle
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.8, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeInOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            height: 50,
+                            width: 50,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: EvacuationColors.primaryColor
+                                  .withOpacity(0.2),
+                            ),
+                            child: Icon(
+                              Icons.route_rounded,
+                              color: EvacuationColors.primaryColor,
+                              size: 24,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Processing text
+              Text(
+                'AI Optimizing Route',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: EvacuationColors.textColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Processing message
+              Text(
+                'Analyzing traffic, weather conditions, and emergency factors to find the safest and fastest evacuation route.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: EvacuationColors.subtitleColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Processing indicators
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildProcessingIndicator('Traffic', Colors.orange),
+                  const SizedBox(width: 12),
+                  _buildProcessingIndicator('Weather', Colors.blue),
+                  const SizedBox(width: 12),
+                  _buildProcessingIndicator('Safety', Colors.green),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Close dialog after 2 seconds
+    Future.delayed(const Duration(milliseconds: 2300), () {
+      Navigator.of(context).pop();
+    });
+  }
+
+  // Helper method to build processing indicators
+  Widget _buildProcessingIndicator(String label, Color color) {
+    return Column(
+      children: [
+        SizedBox(
+          width: 50,
+          height: 4,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 2000),
+            builder: (context, value, child) {
+              return LinearProgressIndicator(
+                value: value,
+                backgroundColor: color.withOpacity(0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                borderRadius: BorderRadius.circular(2),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            color: EvacuationColors.subtitleColor,
+          ),
+        ),
+      ],
     );
   }
 }
