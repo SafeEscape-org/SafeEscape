@@ -14,6 +14,50 @@
 ## 🏆 Hackathon Submission
 
 SafeEscape is a comprehensive disaster management application designed to help users prepare for, respond to, and recover from natural and man-made disasters. This project was developed as part of the GDG SOLUTION CHALLENGE hackathon.
+## 🌍 UN Sustainable Development Goals (SDGs) Alignment
+
+SafeEscape is built with a mission to create meaningful real-world impact by aligning directly with key **United Nations Sustainable Development Goals** (SDGs). Our solution actively contributes to resilience, safety, and sustainability during emergencies.
+
+<table>
+  <tr>
+    <th align="center">🎯 Goal</th>
+    <th align="center">🌐 Description</th>
+    <th align="center">🚀 Our Contribution</th>
+  </tr>
+  <tr>
+    <td align="center"><b>Goal 3:</b><br>Good Health & Well-being</td>
+    <td>Ensure healthy lives and promote well-being for all at all ages</td>
+    <td>
+      <ul>
+        <li>Instant access to emergency services</li>
+        <li>AI health triage suggestions</li>
+        <li>Emergency contacts & real-time status updates</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Goal 11:</b><br>Sustainable Cities & Communities</td>
+    <td>Make cities inclusive, safe, resilient and sustainable</td>
+    <td>
+      <ul>
+        <li>Real-time disaster maps with hazard zones</li>
+        <li>Smart evacuation routing using AI + Google Maps</li>
+        <li>Location-based disaster preparation tips</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Goal 13:</b><br>Climate Action</td>
+    <td>Take urgent action to combat climate change and its impacts</td>
+    <td>
+      <ul>
+        <li>AI-based disaster prediction (wildfires, floods)</li>
+        <li>Community reporting to monitor climate impacts</li>
+        <li>DisasterCam AI for early visual detection</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ## 📱 App Screenshots
 
