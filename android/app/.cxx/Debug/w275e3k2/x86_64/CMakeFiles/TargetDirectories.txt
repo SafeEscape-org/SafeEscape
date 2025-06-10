@@ -1,0 +1,2 @@
+D:/safeecaspe/SafeEscape/android/app/.cxx/Debug/w275e3k2/x86_64/CMakeFiles/edit_cache.dir
+D:/safeecaspe/SafeEscape/android/app/.cxx/Debug/w275e3k2/x86_64/CMakeFiles/rebuild_cache.dir

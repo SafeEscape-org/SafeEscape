@@ -5,7 +5,7 @@ import 'package:disaster_management/features/disaster_alerts/widgets/current_wea
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/recent_earthquakes_card.dart';
 import 'package:disaster_management/services/location_service.dart';
-// Add this import
+import 'package:disaster_management/services/socket_service.dart'; // Add this import
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import 'package:flutter/material.dart';
