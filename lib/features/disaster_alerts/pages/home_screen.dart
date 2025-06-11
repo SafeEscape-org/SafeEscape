@@ -5,17 +5,10 @@ import 'package:disaster_management/features/disaster_alerts/widgets/current_wea
 import 'package:disaster_management/features/disaster_alerts/widgets/disaster_declaration_card.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/recent_earthquakes_card.dart';
 import 'package:disaster_management/services/location_service.dart';
-import 'package:disaster_management/services/socket_service.dart'; // Add this import
+// Add this import
 import 'package:disaster_management/shared/widgets/app_scaffold.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
-import 'package:disaster_management/shared/widgets/chat_overlay.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:disaster_management/core/constants/api_constants.dart';
 import 'package:disaster_management/services/disaster_service.dart';
 
 class CombinedHomeWeatherComponent extends StatefulWidget {

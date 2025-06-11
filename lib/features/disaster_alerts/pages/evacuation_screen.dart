@@ -4,7 +4,6 @@ import 'package:disaster_management/features/disaster_alerts/services/places_ser
 import 'package:disaster_management/features/disaster_alerts/utils/map_bounds_calculator.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/expanded_actions.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/expanded_map_preview.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
@@ -16,8 +15,6 @@ import 'package:disaster_management/services/location_service.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/evacuation_map.dart';
 import 'package:disaster_management/shared/widgets/chat_assistance.dart';
 import '../models/place_type.dart';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 class EvacuationScreen extends StatefulWidget {
   const EvacuationScreen({super.key});
   @override

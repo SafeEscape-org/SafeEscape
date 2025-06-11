@@ -1,4 +1,3 @@
-import '../models/chat_message.dart';
 
 class ChatService {
   static Future<String> getResponse(String message) async {
