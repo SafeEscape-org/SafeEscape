@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 
 import 'nav_header.dart';
 import 'nav_item.dart';
 import 'nav_footer.dart';
-import '../../common/animated_background.dart';
 import '../../models/navigation_item.dart';
 import '../../constants/colors.dart';
 
