@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 
 class AppScaffold extends StatelessWidget {
   final Widget body;

@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:io';
-import 'package:disaster_management/core/constants/api_constants.dart';
 import 'package:disaster_management/features/disaster_alerts/pages/emergency_contacts_screen.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart'; // Add this import
+// Add this import
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:disaster_management/config/fcm_config.dart';
 import 'package:disaster_management/config/firebase_config.dart';
 import 'package:disaster_management/core/constants/app_colors.dart';
@@ -16,7 +13,6 @@ import 'package:disaster_management/features/disaster_alerts/pages/evacuation_sc
 import 'package:disaster_management/features/disaster_alerts/widgets/footerComponent.dart';
 import 'package:disaster_management/features/authentication/pages/registration_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:disaster_management/features/authentication/services/auth_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';

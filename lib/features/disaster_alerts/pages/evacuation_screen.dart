@@ -4,7 +4,6 @@ import 'package:disaster_management/features/disaster_alerts/services/places_ser
 import 'package:disaster_management/features/disaster_alerts/utils/map_bounds_calculator.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/expanded_actions.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/expanded_map_preview.dart';
-import 'package:disaster_management/features/disaster_alerts/widgets/headerComponent.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/permission_denied_message.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/place_type_selector.dart';
 import 'package:disaster_management/features/disaster_alerts/widgets/SideNavigation/side_navigation.dart';
